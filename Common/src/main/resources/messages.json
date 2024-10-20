@@ -1,0 +1,74 @@
+{
+  "config-version": 1,
+  "messages": {
+    "generic": {
+      "prefix": "<aqua><bold>VHR <dark_gray><bold>»<reset> <gray>",
+      "error": "<red>Er is een fout opgetreden, controleer de console!",
+      "not-exists": "<red>Plugin <dark_red><plugin></dark_red> bestaat niet!",
+      "not-enabled": "<red>Plugin <dark_red><plugin></dark_red> is niet ingeschakeld!",
+      "already-loaded": "<red>Plugin <dark_red><plugin></dark_red> is al geladen!",
+      "already-enabled": "<red>Plugin <dark_red><plugin></dark_red> is al ingeschakeld!",
+      "already-disabled": "<red>Plugin <dark_red><plugin></dark_red> is al uitgeschakeld!",
+      "invalid-plugin": "<red>Plugin <dark_red><plugin></dark_red> is ongeldig!",
+      "invalid-description": "<red>Plugin <dark_red><plugin></dark_red> heeft een ongeldige plugindescriptie!",
+      "unknown-dependency": "<red>Plugin <dark_red><plugin></dark_red> heeft een onbekende afhankelijkheid: <dark_red><dependency><red>!",
+      "file-deleted": "<red>Het bestand van plugin <dark_red><plugin></dark_red> is verwijderd!",
+      "protected-plugin": "<red>Plugin <dark_red><plugin></dark_red> is beschermd!"
+    },
+    "reload": "<dark_aqua>Succesvol herladen <aqua>VHR configuraties</aqua>!",
+    "loadplugin": "<dark_aqua>Succesvol geladen <aqua><plugin></aqua>!",
+    "unloadplugin": "<dark_aqua>Succesvol ontladen <aqua><plugin></aqua>!",
+    "reloadplugin": {
+      "success": "<dark_aqua>Succesvol herladen <aqua><plugin></aqua>!",
+      "velocityhotreloaded": "<red>Sorry, maar je kunt VHR niet op deze manier herladen. Herstart alstublieft met <dark_red>/<command></dark_red>."
+    },
+    "depending-plugins": {
+      "prefix": "<red>Plugin <dark_red><plugin></dark_red> heeft afhankelijke plugins: ",
+      "format": "<dark_red><plugin>",
+      "separator": "<red>, ",
+      "last-separator": " <red>en ",
+      "override": "<red>Gebruik \"<dark_red>/<command></dark_red>\" om de opdrachtuitvoering te forceren."
+    },
+    "watchplugin": {
+      "start": "<dark_aqua>Gestart met volgen van <aqua><plugin></aqua>!",
+      "change": "<dark_aqua>Wijzigingen gedetecteerd, plugins worden nu herladen...",
+      "stopped": "<dark_aqua>Gestopt met volgen van <aqua><plugin></aqua>!",
+      "file-deleted": "<red>Het bestand van plugin <dark_red><plugin></dark_red> is verwijderd! Wachten tot de plugin weer verschijnt...",
+      "deleted-file-is-created": "<dark_aqua>Het bestand van plugin <aqua><plugin></aqua> is weer verschenen!",
+      "already-watching": "<red>Je volgt <dark_red><plugin></dark_red> al!",
+      "not-watching": "<red>Je volgt <dark_red><plugin></dark_red> niet!"
+    },
+    "help": {
+      "header": "<dark_gray><strikethrough>-------------=<reset><dark_gray>[ <aqua><bold>VHR Help<reset> <dark_gray>]<strikethrough>=---------------",
+      "format": "<dark_gray>/<dark_aqua><command> <dark_gray>(<aqua><help><dark_gray>)",
+      "footer": "<dark_gray><strikethrough>-------------------------------------------------"
+    },
+    "plugins": {
+      "header": "<dark_gray><strikethrough>------------=<reset><dark_gray>[ <aqua><bold>VHR Plugins<reset> <dark_gray>]<strikethrough>=-------------",
+      "prefix": " <dark_aqua>Plugins <dark_gray>(<green><count><dark_gray>)<aqua>: ",
+      "format": "<dark_aqua><plugin>",
+      "format-disabled": "<red><plugin>",
+      "separator": "<aqua>, ",
+      "last-separator": " <aqua>en ",
+      "version": " <dark_gray>(<green><version><dark_gray>)",
+      "footer": "<dark_gray><strikethrough>-------------------------------------------------"
+    },
+    "plugininfo": {
+      "header": "<dark_gray><strikethrough>-----------=<reset><dark_gray>[ <aqua><bold>VHR PluginInfo<reset> <dark_gray>]<strikethrough>=-----------",
+      "format": " <dark_aqua><key><dark_gray>: <aqua><value>",
+      "list-format": "<aqua><value>",
+      "list-separator": "<dark_gray>, ",
+      "list-last-separator": " <dark_gray>en ",
+      "footer": "<dark_gray><strikethrough>-------------------------------------------------"
+    },
+    "commandinfo": {
+      "header": "<dark_gray><strikethrough>-----------=<reset><dark_gray>[ <aqua><bold>VHR CommandInfo<reset> <dark_gray>]<strikethrough>=----------",
+      "format": " <dark_aqua><key><dark_gray>: <aqua><value>",
+      "list-format": "<aqua><value>",
+      "list-separator": "<dark_gray>, ",
+      "list-last-separator": " <dark_gray>en ",
+      "footer": "<dark_gray><strikethrough>-------------------------------------------------",
+      "not-exists": "<red>Dat commando is geen geldig geregistreerd commando."
+    }
+  }
+}
