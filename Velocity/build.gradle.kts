@@ -12,20 +12,25 @@ base {
 }
 
 repositories {
-    maven("https://nexus.velocitypowered.com/repository/maven-public/")
+    mavenCentral()
+
+    maven("https://repo.papermc.io/repository/maven-public/") {
+        name = "papermc"
+    }
+
     maven("https://libraries.minecraft.net")
 }
 
 dependencies {
     implementation("org.incendo:cloud-velocity:${VersionConstants.cloudMinecraftVersion}")
-    implementation("net.kyori:adventure-text-minimessage:4.17.0") {
+    implementation("net.kyori:adventure-text-minimessage:4.26.1") {
         exclude("net.kyori", "adventure-api")
     }
     implementation(project(":Common"))
-    compileOnly("com.velocitypowered:velocity-api:3.3.0-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
     compileOnly("com.velocitypowered:velocity-brigadier:1.0.0-SNAPSHOT")
     compileOnly("com.electronwill.night-config:toml:3.6.3")
-    annotationProcessor("com.velocitypowered:velocity-api:3.3.0-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
 }
 
 tasks {
@@ -33,4 +38,3 @@ tasks {
         replaceToken("{version}", version, "src/main/java/nl/hauntedmc/velocityhotreloaded/velocity/VHR.java")
     }
 }
-
