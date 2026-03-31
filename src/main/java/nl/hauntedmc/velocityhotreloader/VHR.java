@@ -2,6 +2,7 @@ package nl.hauntedmc.velocityhotreloader;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.mojang.brigadier.tree.CommandNode;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -18,17 +19,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import nl.hauntedmc.velocityhotreloader.commands.CommandPlugins;
+import java.util.stream.Collectors;
 import nl.hauntedmc.velocityhotreloader.commands.CommandVHR;
-import nl.hauntedmc.velocityhotreloader.commands.brigadier.BrigadierHandler;
-import nl.hauntedmc.velocityhotreloader.config.CommandsResource;
-import nl.hauntedmc.velocityhotreloader.config.ConfigResource;
 import nl.hauntedmc.velocityhotreloader.config.MessageKey;
 import nl.hauntedmc.velocityhotreloader.config.MessagesResource;
 import nl.hauntedmc.velocityhotreloader.entities.results.CloseablePluginResults;
 import nl.hauntedmc.velocityhotreloader.entities.results.PluginResults;
 import nl.hauntedmc.velocityhotreloader.managers.WatchManager;
-import nl.hauntedmc.velocityhotreloader.entities.VelocityAudience;
 import nl.hauntedmc.velocityhotreloader.entities.VelocityAudienceProvider;
 import nl.hauntedmc.velocityhotreloader.entities.VelocityResourceProvider;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginCommandManager;
@@ -36,12 +33,6 @@ import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginManager;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityTaskManager;
 import nl.hauntedmc.velocityhotreloader.reflection.RVelocityCommandManager;
 import nl.hauntedmc.velocityhotreloader.utils.FileUtils;
-import org.incendo.cloud.Command;
-import org.incendo.cloud.CommandManager;
-import org.incendo.cloud.SenderMapper;
-import org.incendo.cloud.brigadier.CloudBrigadierManager;
-import org.incendo.cloud.execution.ExecutionCoordinator;
-import org.incendo.cloud.velocity.VelocityCommandManager;
 import org.slf4j.Logger;
 
 /**
@@ -59,6 +50,8 @@ public class VHR {
 
     private static VHR instance;
     private static final String PLUGIN_COMMANDS_CACHE = ".pluginCommandsCache.json";
+    private static final int STARTUP_UNLOAD_DELAY_TICKS = 20;
+    private static final List<String> STARTUP_UNLOAD_PLUGIN_IDS = List.of();
 
     private final ProxyServer proxy;
     private final Logger slf4jLogger;
@@ -71,10 +64,8 @@ public class VHR {
     private VelocityTaskManager taskManager;
     private VelocityResourceProvider resourceProvider;
     private VelocityAudienceProvider chatProvider;
-    private CommandsResource commandsResource;
-    private ConfigResource configResource;
     private MessagesResource messagesResource;
-    private CommandManager<VelocityAudience> commandManager;
+    private boolean commandsRegistered;
 
     @Inject
     public VHR(
@@ -164,20 +155,14 @@ public class VHR {
         return watchManager;
     }
 
-    public CommandsResource getCommandsResource() {
-        return commandsResource;
-    }
-
-    public ConfigResource getConfigResource() {
-        return configResource;
-    }
-
     public MessagesResource getMessagesResource() {
         return messagesResource;
     }
 
-    public Collection<Command<VelocityAudience>> getCommands() {
-        return commandManager.commands();
+    public Collection<String> getCommands() {
+        return RVelocityCommandManager.getDispatcher(proxy.getCommandManager()).getRoot().getChildren().stream()
+                .map(CommandNode::getName)
+                .collect(Collectors.toSet());
     }
 
     public void createDataFolderIfNotExists() {
@@ -211,35 +196,17 @@ public class VHR {
         return file;
     }
 
-    private VelocityCommandManager<VelocityAudience> newCommandManager() {
-        VelocityCommandManager<VelocityAudience> commandManager = new VelocityCommandManager<>(
-                pluginContainer,
-                proxy,
-                ExecutionCoordinator.asyncCoordinator(),
-                SenderMapper.create(chatProvider::get, VelocityAudience::getSource)
-        );
-        handleBrigadier(commandManager.brigadierManager());
-        return commandManager;
-    }
-
-    private void registerCommands(CommandManager<VelocityAudience> commandManager) {
-        new CommandPlugins(this).register(commandManager);
-        new CommandVHR(this).register(commandManager);
-    }
-
-    private void handleBrigadier(CloudBrigadierManager<VelocityAudience, ?> brigadierManager) {
-        BrigadierHandler handler = new BrigadierHandler(brigadierManager);
-        handler.registerTypes();
+    private void registerCommands() {
+        new CommandVHR(this).register();
     }
 
     private void unloadConfiguredPlugins() {
-        List<String> pluginIds = configResource.getConfig().getStringList("unload-after-startup.plugins");
-        List<PluginContainer> plugins = new ArrayList<>(pluginIds.size());
-        for (String pluginId : pluginIds) {
+        List<PluginContainer> plugins = new ArrayList<>(STARTUP_UNLOAD_PLUGIN_IDS.size());
+        for (String pluginId : STARTUP_UNLOAD_PLUGIN_IDS) {
             PluginContainer pluginContainer = getPluginManager().getPlugin(pluginId).orElse(null);
             if (pluginContainer == null) {
                 slf4jLogger.warn(
-                        "Plugin '{}' defined in config.yml 'unload-after-startup' is not loaded!",
+                        "Plugin '{}' defined in startup unload list is not loaded!",
                         pluginId
                 );
                 continue;
@@ -273,7 +240,7 @@ public class VHR {
         reload();
         getTaskManager().runTaskLater(
                 this::unloadConfiguredPlugins,
-                configResource.getConfig().getInt("unload-after-startup.delay-ticks")
+                STARTUP_UNLOAD_DELAY_TICKS
         );
     }
 
@@ -284,13 +251,11 @@ public class VHR {
     }
 
     public void reload() {
-        this.commandsResource = new CommandsResource(this);
-        this.configResource = new ConfigResource(this);
         this.messagesResource = new MessagesResource(this);
         this.messagesResource.load(Arrays.asList(MessageKey.values()));
-        if (this.commandManager == null) {
-            this.commandManager = newCommandManager();
-            registerCommands(this.commandManager);
+        if (!this.commandsRegistered) {
+            registerCommands();
+            this.commandsRegistered = true;
         }
     }
 

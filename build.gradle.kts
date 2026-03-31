@@ -32,9 +32,6 @@ repositories {
 }
 
 dependencies {
-    implementation("org.incendo:cloud-core:${VersionConstants.cloudVersion}")
-    implementation("org.incendo:cloud-brigadier:${VersionConstants.cloudMinecraftVersion}")
-    implementation("org.incendo:cloud-velocity:${VersionConstants.cloudMinecraftVersion}")
     implementation("net.kyori:adventure-text-minimessage:4.26.1") {
         exclude("net.kyori", "adventure-api")
     }
@@ -42,7 +39,6 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.6")
     compileOnly("com.mojang:brigadier:1.0.18")
     compileOnly("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
-    compileOnly("com.velocitypowered:velocity-brigadier:1.0.0-SNAPSHOT")
     compileOnly("com.electronwill.night-config:toml:3.6.3")
     annotationProcessor("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
     implementation("net.kyori:adventure-text-serializer-gson:${VersionConstants.adventureVersion}") {
@@ -91,8 +87,6 @@ tasks.withType<ShadowJar> {
     exclude("org/checkerframework/**")
     exclude("plugin.yml")
     relocate("com.google.gson", "${dependencyDir}.gson")
-    relocate("cloud.commandframework", "${dependencyDir}.cloud")
-    relocate("io.leangen.geantyref", "${dependencyDir}.typetoken")
     relocate("net.kyori.adventure.text.minimessage", "${dependencyDir}.adventure.text.minimessage")
     relocate("net.kyori.adventure.text.serializer.gson", "${dependencyDir}.impl.adventure.text.serializer.gson")
 }

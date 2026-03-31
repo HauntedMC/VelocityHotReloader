@@ -1,192 +1,309 @@
 package nl.hauntedmc.velocityhotreloader.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import com.mojang.brigadier.tree.LiteralCommandNode;
+import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.PluginDescription;
 import com.velocitypowered.api.plugin.meta.PluginDependency;
-import nl.hauntedmc.velocityhotreloader.commands.arguments.CommandParser;
-import nl.hauntedmc.velocityhotreloader.commands.arguments.JarFilesParser;
-import nl.hauntedmc.velocityhotreloader.commands.arguments.PluginParser;
-import nl.hauntedmc.velocityhotreloader.commands.arguments.PluginsParser;
+import java.io.File;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import nl.hauntedmc.velocityhotreloader.VHR;
 import nl.hauntedmc.velocityhotreloader.config.MessageKey;
 import nl.hauntedmc.velocityhotreloader.config.MessagesResource;
-import nl.hauntedmc.velocityhotreloader.config.VHRConfig;
+import nl.hauntedmc.velocityhotreloader.entities.VelocityAudience;
+import nl.hauntedmc.velocityhotreloader.entities.VelocityPluginDescription;
 import nl.hauntedmc.velocityhotreloader.entities.results.CloseablePluginResults;
 import nl.hauntedmc.velocityhotreloader.entities.results.PluginResult;
 import nl.hauntedmc.velocityhotreloader.entities.results.PluginResults;
 import nl.hauntedmc.velocityhotreloader.entities.results.PluginWatchResults;
 import nl.hauntedmc.velocityhotreloader.entities.results.Result;
-import nl.hauntedmc.velocityhotreloader.utils.KeyValueComponentBuilder;
-import nl.hauntedmc.velocityhotreloader.utils.ListComponentBuilder;
-import nl.hauntedmc.velocityhotreloader.VHR;
-import nl.hauntedmc.velocityhotreloader.entities.VelocityAudience;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginManager;
 import nl.hauntedmc.velocityhotreloader.reflection.RVelocityCommandManager;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import org.incendo.cloud.Command;
-import org.incendo.cloud.CommandManager;
-import org.incendo.cloud.context.CommandContext;
-import org.incendo.cloud.parser.ParserDescriptor;
+import nl.hauntedmc.velocityhotreloader.utils.KeyValueComponentBuilder;
+import nl.hauntedmc.velocityhotreloader.utils.ListComponentBuilder;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Collections;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+public class CommandVHR {
 
-public class CommandVHR extends VHRCommand {
+    private static final String ROOT_COMMAND = "velocityhotreloader";
+    private static final String ROOT_ALIAS = "vhr";
+
+    private static final String PERM_HELP = "velocityhotreloader.help";
+    private static final String PERM_RELOAD = "velocityhotreloader.reload";
+    private static final String PERM_RESTART = "velocityhotreloader.restart";
+    private static final String PERM_LOAD_PLUGIN = "velocityhotreloader.loadplugin";
+    private static final String PERM_UNLOAD_PLUGIN = "velocityhotreloader.unloadplugin";
+    private static final String PERM_RELOAD_PLUGIN = "velocityhotreloader.reloadplugin";
+    private static final String PERM_WATCH_PLUGIN = "velocityhotreloader.watchplugin";
+    private static final String PERM_PLUGIN_INFO = "velocityhotreloader.plugininfo";
+    private static final String PERM_COMMAND_INFO = "velocityhotreloader.commandinfo";
+    private static final String PERM_PLUGINS = "velocityhotreloader.plugins";
+    private static final String PERM_PLUGINS_VERSION = "velocityhotreloader.plugins.version";
+
+    private static final Set<String> FORCE_FLAGS = Set.of("--force", "-f");
+    private static final Set<String> VERSION_FLAGS = Set.of("--version", "-v");
+
+    private final VHR plugin;
 
     public CommandVHR(VHR plugin) {
-        super(plugin, "velocityhotreloader");
+        this.plugin = plugin;
     }
 
-    protected ParserDescriptor<VelocityAudience, PluginContainer[]> pluginsParser() {
-        return pluginsParser(null);
+    public void register() {
+        CommandManager commandManager = plugin.getProxy().getCommandManager();
+        com.velocitypowered.api.command.BrigadierCommand brigadier =
+                new com.velocitypowered.api.command.BrigadierCommand(buildTree());
+        CommandMeta meta = commandManager.metaBuilder(brigadier)
+                .aliases(ROOT_ALIAS)
+                .plugin(plugin)
+                .build();
+        commandManager.register(meta, brigadier);
     }
 
-    protected ParserDescriptor<VelocityAudience, PluginContainer[]> pluginsParser(String path) {
-        return PluginsParser.pluginsParser(this.plugin, path);
+    private LiteralCommandNode<CommandSource> buildTree() {
+        LiteralArgumentBuilder<CommandSource> root = LiteralArgumentBuilder.<CommandSource>literal(ROOT_COMMAND)
+                .executes(context -> {
+                    if (hasPermission(context.getSource(), PERM_HELP)) {
+                        handleHelpCommand(plugin.getChatProvider().get(context.getSource()));
+                    }
+                    return 1;
+                });
+
+        addSubcommand(root, "help", List.of(), PERM_HELP, literal -> literal.executes(context -> {
+            handleHelpCommand(plugin.getChatProvider().get(context.getSource()));
+            return 1;
+        }));
+
+        addSubcommand(root, "reload", List.of(), PERM_RELOAD, literal -> literal.executes(context -> {
+            handleReload(plugin.getChatProvider().get(context.getSource()));
+            return 1;
+        }));
+
+        addSubcommand(root, "restart", List.of(), PERM_RESTART, literal -> {
+            literal.executes(context -> {
+                handleRestart(
+                        plugin.getChatProvider().get(context.getSource()),
+                        false,
+                        context.getInput()
+                );
+                return 1;
+            });
+
+            for (String flag : FORCE_FLAGS) {
+                literal.then(LiteralArgumentBuilder.<CommandSource>literal(flag)
+                        .requires(source -> hasPermission(source, PERM_RESTART))
+                        .executes(context -> {
+                            handleRestart(
+                                    plugin.getChatProvider().get(context.getSource()),
+                                    true,
+                                    context.getInput()
+                            );
+                            return 1;
+                        }));
+            }
+            return literal;
+        });
+
+        addSubcommand(root, "loadplugin", List.of(), PERM_LOAD_PLUGIN, literal -> literal
+                .then(RequiredArgumentBuilder.<CommandSource, String>argument("jarFiles", StringArgumentType.greedyString())
+                        .suggests((context, builder) -> suggestJarFiles(builder))
+                        .executes(context -> {
+                            VelocityAudience sender = plugin.getChatProvider().get(context.getSource());
+                            String rawFiles = StringArgumentType.getString(context, "jarFiles");
+                            ParsedJarFiles parsed = parseJarFiles(rawFiles);
+                            if (parsed.invalidJarFile() != null) {
+                                sendError(sender, "Jar file '" + parsed.invalidJarFile() + "' does not exist.");
+                                return 0;
+                            }
+                            if (parsed.files().isEmpty()) {
+                                sendError(sender, "Please specify at least one jar file.");
+                                return 0;
+                            }
+
+                            handleLoadPlugin(sender, parsed.files());
+                            return 1;
+                        })));
+
+        addPluginBatchSubcommand(root, "unloadplugin", List.of(), PERM_UNLOAD_PLUGIN, this::handleUnloadPlugin);
+        addPluginBatchSubcommand(root, "reloadplugin", List.of(), PERM_RELOAD_PLUGIN, this::handleReloadPlugin);
+        addPluginBatchSubcommand(root, "watchplugin", List.of(), PERM_WATCH_PLUGIN, this::handleWatchPlugin);
+
+        addSubcommand(root, "unwatchplugin", List.of(), PERM_WATCH_PLUGIN, literal -> literal
+                .then(RequiredArgumentBuilder.<CommandSource, String>argument("plugin", StringArgumentType.word())
+                        .suggests((context, builder) -> suggestPlugins(builder))
+                        .executes(context -> {
+                            VelocityAudience sender = plugin.getChatProvider().get(context.getSource());
+                            String pluginName = StringArgumentType.getString(context, "plugin");
+                            PluginContainer pluginContainer = parsePlugin(pluginName);
+                            if (pluginContainer == null) {
+                                sendPluginNotExists(sender, pluginName);
+                                return 0;
+                            }
+
+                            handleUnwatchPlugin(sender, pluginContainer);
+                            return 1;
+                        })));
+
+        addSubcommand(root, "plugininfo", List.of(), PERM_PLUGIN_INFO, literal -> literal
+                .then(RequiredArgumentBuilder.<CommandSource, String>argument("plugin", StringArgumentType.word())
+                        .suggests((context, builder) -> suggestPlugins(builder))
+                        .executes(context -> {
+                            VelocityAudience sender = plugin.getChatProvider().get(context.getSource());
+                            String pluginName = StringArgumentType.getString(context, "plugin");
+                            PluginContainer pluginContainer = parsePlugin(pluginName);
+                            if (pluginContainer == null) {
+                                sendPluginNotExists(sender, pluginName);
+                                return 0;
+                            }
+
+                            handlePluginInfo(sender, pluginContainer);
+                            return 1;
+                        })));
+
+        addSubcommand(root, "commandinfo", List.of(), PERM_COMMAND_INFO, literal -> literal
+                .then(RequiredArgumentBuilder.<CommandSource, String>argument("command", StringArgumentType.word())
+                        .suggests((context, builder) -> suggestCommands(builder))
+                        .executes(context -> {
+                            VelocityAudience sender = plugin.getChatProvider().get(context.getSource());
+                            String commandName = StringArgumentType.getString(context, "command");
+                            handleCommandInfo(sender, commandName);
+                            return 1;
+                        })));
+
+        addSubcommand(root, "plugins", List.of(), PERM_PLUGINS, literal -> {
+            literal.executes(context -> {
+                handlePlugins(plugin.getChatProvider().get(context.getSource()), false);
+                return 1;
+            });
+
+            for (String flag : VERSION_FLAGS) {
+                literal.then(LiteralArgumentBuilder.<CommandSource>literal(flag)
+                        .requires(source -> hasPermission(source, PERM_PLUGINS_VERSION))
+                        .executes(context -> {
+                            handlePlugins(plugin.getChatProvider().get(context.getSource()), true);
+                            return 1;
+                        }));
+            }
+            return literal;
+        });
+
+        return root.build();
     }
 
-    @Override
-    public void register(
-            CommandManager<VelocityAudience> manager,
-            Command.Builder<VelocityAudience> builder
+    private void addPluginBatchSubcommand(
+            LiteralArgumentBuilder<CommandSource> root,
+            String name,
+            List<String> aliases,
+            String permission,
+            PluginBatchHandler handler
     ) {
-        addRequiredComponent("jarFiles", JarFilesParser.jarFilesParser(this.plugin));
-        addRequiredComponent("plugins", pluginsParser());
-        addRequiredComponent("plugin", PluginParser.pluginParser(this.plugin));
-        addRequiredComponent("command", CommandParser.commandParser(this.plugin));
+        addSubcommand(root, name, aliases, permission, literal -> literal
+                .then(RequiredArgumentBuilder.<CommandSource, String>argument("plugins", StringArgumentType.greedyString())
+                        .suggests((context, builder) -> suggestPluginsAndFlags(builder, FORCE_FLAGS))
+                        .executes(context -> {
+                            VelocityAudience sender = plugin.getChatProvider().get(context.getSource());
+                            String rawPlugins = StringArgumentType.getString(context, "plugins");
+                            ParsedPlugins parsed = parsePlugins(rawPlugins, FORCE_FLAGS);
+                            if (parsed.invalidPlugin() != null) {
+                                sendPluginNotExists(sender, parsed.invalidPlugin());
+                                return 0;
+                            }
+                            if (parsed.plugins().isEmpty()) {
+                                sendError(sender, "Please specify at least one plugin.");
+                                return 0;
+                            }
 
-        manager.command(builder
-                .handler(this::handleHelpCommand));
-        registerSubcommand(manager, builder, "help", subcommandBuilder -> subcommandBuilder
-                .handler(this::handleHelpCommand));
-        registerSubcommand(manager, builder, "reload", subcommandBuilder -> subcommandBuilder
-                .handler(this::handleReload));
-        registerSubcommand(manager, builder, "restart", subcommandBuilder -> subcommandBuilder
-                .handler(this::handleRestart));
-        registerSubcommand(manager, builder, "loadplugin", subcommandBuilder -> subcommandBuilder
-                .argument(getComponent("jarFiles"))
-                .handler(this::handleLoadPlugin));
-        registerSubcommand(manager, builder, "unloadplugin", subcommandBuilder -> subcommandBuilder
-                .required("plugins", pluginsParser(getRawPath("unloadplugin")))
-                .handler(this::handleUnloadPlugin));
-        registerSubcommand(manager, builder, "reloadplugin", subcommandBuilder -> subcommandBuilder
-                .required("plugins", pluginsParser(getRawPath("reloadplugin")))
-                .handler(this::handleReloadPlugin));
-        registerSubcommand(manager, builder, "watchplugin", subcommandBuilder -> subcommandBuilder
-                .required("plugins", pluginsParser(getRawPath("watchplugin")))
-                .handler(this::handleWatchPlugin));
-        registerSubcommand(manager, builder, "unwatchplugin", subcommandBuilder -> subcommandBuilder
-                .argument(getComponent("plugin"))
-                .handler(this::handleUnwatchPlugin));
-        registerSubcommand(manager, builder, "plugininfo", subcommandBuilder -> subcommandBuilder
-                .argument(getComponent("plugin"))
-                .handler(this::handlePluginInfo));
-        registerSubcommand(manager, builder, "commandinfo", subcommandBuilder -> subcommandBuilder
-                .argument(getComponent("command"))
-                .handler(this::handleCommandInfo));
+                            handler.handle(sender, parsed.plugins(), parsed.force(), context.getInput());
+                            return 1;
+                        })));
     }
 
-    private void handleHelpCommand(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
+    private void addSubcommand(
+            LiteralArgumentBuilder<CommandSource> root,
+            String name,
+            List<String> aliases,
+            String permission,
+            Function<LiteralArgumentBuilder<CommandSource>, LiteralArgumentBuilder<CommandSource>> builderFunction
+    ) {
+        root.then(builderFunction.apply(baseLiteral(name, permission)));
+        for (String alias : aliases) {
+            root.then(builderFunction.apply(baseLiteral(alias, permission)));
+        }
+    }
 
+    private LiteralArgumentBuilder<CommandSource> baseLiteral(String name, String permission) {
+        return LiteralArgumentBuilder.<CommandSource>literal(name)
+                .requires(source -> hasPermission(source, permission));
+    }
+
+    private boolean hasPermission(CommandSource source, String permission) {
+        return permission == null || permission.isBlank() || source.hasPermission(permission);
+    }
+
+    private void handleHelpCommand(VelocityAudience sender) {
         MessagesResource messages = plugin.getMessagesResource();
         sender.sendMessage(messages.get(MessageKey.HELP_HEADER).toComponent());
 
         MessagesResource.Message helpFormatMessage = messages.get(MessageKey.HELP_FORMAT);
-
-        VHRConfig config = (VHRConfig) plugin.getCommandsResource().getConfig().get("commands");
-        for (String commandName : config.getKeys()) {
-            VHRConfig commandConfig = (VHRConfig) config.get(commandName);
-            CommandElement commandElement = parseElement(commandConfig);
-            String shortestCommandAlias = determineShortestAlias(commandElement);
-
-            if (commandElement.shouldDisplayInHelp()) {
-                sender.sendMessage(helpFormatMessage.toComponent(
-                        Placeholder.unparsed("command", shortestCommandAlias),
-                        Placeholder.unparsed("help", commandElement.getDescription().textDescription()))
-                );
-            }
-
-            Object subcommandsObject = commandConfig.get("subcommands");
-            if (subcommandsObject instanceof VHRConfig) {
-                VHRConfig subcommandsConfig = (VHRConfig) subcommandsObject;
-
-                for (String subcommandName : subcommandsConfig.getKeys()) {
-                    VHRConfig subcommandConfig = (VHRConfig) subcommandsConfig.get(subcommandName);
-                    CommandElement subcommandElement = parseElement(subcommandConfig);
-                    if (subcommandElement.shouldDisplayInHelp()) {
-                        String shortestSubcommandAlias = determineShortestAlias(subcommandElement);
-                        sender.sendMessage(helpFormatMessage.toComponent(
-                                Placeholder.unparsed("command", shortestCommandAlias + ' ' + shortestSubcommandAlias),
-                                Placeholder.unparsed("help", subcommandElement.getDescription().textDescription())
-                        ));
-                    }
-                }
-            }
-
-            Object flagsObject = commandConfig.get("flags");
-            if (flagsObject instanceof VHRConfig) {
-                VHRConfig flagsConfig = (VHRConfig) flagsObject;
-
-                for (String flagName : flagsConfig.getKeys()) {
-                    VHRConfig flagConfig = (VHRConfig) flagsConfig.get(flagName);
-                    CommandElement flagElement = parseElement(flagConfig);
-                    if (flagElement.shouldDisplayInHelp()) {
-                        String shortestFlagAlias = determineShortestAlias(flagElement);
-                        String flagPrefix = "-" + (flagElement.getMain().equals(shortestFlagAlias) ? "_" : "");
-                        sender.sendMessage(helpFormatMessage.toComponent(
-                                Placeholder.unparsed("command",
-                                        shortestCommandAlias + ' ' + flagPrefix + shortestFlagAlias),
-                                Placeholder.unparsed("help", flagElement.getDescription().textDescription())
-                        ));
-                    }
-                }
-            }
-        }
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " help", "Geeft de hulppagina weer.");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " reload", "Herladen van de VHR-plugin.");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " restart", "Herstart de VHR-plugin.");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " loadplugin", "Laadt de opgegeven jar-bestanden.");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " unloadplugin", "Schakelt de opgegeven plugin(s) uit en laadt ze uit.");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " reloadplugin", "Herladen van de opgegeven plugin(s).");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " watchplugin", "Volgt de opgegeven plugin(s) op wijzigingen.");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " unwatchplugin", "Stopt met het volgen van de opgegeven plugin voor wijzigingen.");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " plugininfo", "Toont informatie over de opgegeven plugin.");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " commandinfo", "Toont informatie over het opgegeven commando.");
+        sendHelpLine(helpFormatMessage, sender, ROOT_ALIAS + " plugins", "Geeft de ingeschakelde plugins weer.");
 
         sender.sendMessage(messages.get(MessageKey.HELP_FOOTER).toComponent());
     }
 
-    private String determineShortestAlias(CommandElement element) {
-        String shortestAlias = element.getMain();
-        for (String alias : element.getAliases()) {
-            if (alias.length() < shortestAlias.length()) {
-                shortestAlias = alias;
-            }
-        }
-        return shortestAlias;
+    private void sendHelpLine(
+            MessagesResource.Message helpFormatMessage,
+            VelocityAudience sender,
+            String command,
+            String description
+    ) {
+        sender.sendMessage(helpFormatMessage.toComponent(
+                Placeholder.unparsed("command", command),
+                Placeholder.unparsed("help", description)
+        ));
     }
 
-    private void handleReload(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
+    private void handleReload(VelocityAudience sender) {
         plugin.reload();
         plugin.getMessagesResource().get(MessageKey.RELOAD).sendTo(sender);
     }
 
-    private void handleRestart(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
-
-        if (checkDependingPlugins(context, sender, Collections.singletonList(plugin.getPlugin()), "restart")) {
-            return;
-        }
-
+    private void handleRestart(VelocityAudience sender, boolean force, String rawInput) {
+        List<PluginContainer> plugins = List.of(plugin.getPlugin());
+        checkDependingPlugins(sender, plugins, force, rawInput);
     }
 
-    private void handleLoadPlugin(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
-        List<File> jarFiles = Arrays.asList(context.get("jarFiles"));
-
+    private void handleLoadPlugin(VelocityAudience sender, List<File> jarFiles) {
         VelocityPluginManager pluginManager = plugin.getPluginManager();
         PluginResults<PluginContainer> loadResults = pluginManager.loadPlugins(jarFiles);
         if (!loadResults.isSuccess()) {
@@ -199,15 +316,8 @@ public class CommandVHR extends VHRCommand {
         enableResults.sendTo(sender, MessageKey.LOADPLUGIN);
     }
 
-    private void handleUnloadPlugin(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
-        List<PluginContainer> plugins = Arrays.asList(context.get("plugins"));
-
-        if (checkProtectedPlugins(sender, plugins)) {
-            return;
-        }
-
-        if (checkDependingPlugins(context, sender, plugins, "unloadplugin")) {
+    private void handleUnloadPlugin(VelocityAudience sender, List<PluginContainer> plugins, boolean force, String rawInput) {
+        if (checkDependingPlugins(sender, plugins, force, rawInput)) {
             return;
         }
 
@@ -224,19 +334,12 @@ public class CommandVHR extends VHRCommand {
         unloadResults.sendTo(sender, MessageKey.UNLOADPLUGIN);
     }
 
-    private void handleReloadPlugin(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
-        List<PluginContainer> plugins = Arrays.asList(context.get("plugins"));
-
-        if (checkProtectedPlugins(sender, plugins)) {
+    private void handleReloadPlugin(VelocityAudience sender, List<PluginContainer> plugins, boolean force, String rawInput) {
+        if (checkDependingPlugins(sender, plugins, force, rawInput)) {
             return;
         }
 
-        if (checkDependingPlugins(context, sender, plugins, "reloadplugin")) {
-            return;
-        }
-
-        if (checkVHR(context, sender, plugins)) {
+        if (checkVHR(sender, plugins, rootLiteral(rawInput))) {
             return;
         }
 
@@ -244,101 +347,12 @@ public class CommandVHR extends VHRCommand {
         reloadResults.sendTo(sender, MessageKey.RELOADPLUGIN_SUCCESS);
     }
 
-    protected boolean checkDependingPlugins(
-            CommandContext<VelocityAudience> context,
-            VelocityAudience sender,
-            List<PluginContainer> plugins,
-            String subcommand
-    ) {
-        if (context.flags().contains("force")) return false;
-
-        VelocityPluginManager pluginManager = plugin.getPluginManager();
-        MessagesResource messages = plugin.getMessagesResource();
-
-        boolean hasDependingPlugins = false;
-        for (PluginContainer pluginContainer : plugins) {
-            String pluginId = pluginManager.getPluginId(pluginContainer);
-
-            List<PluginContainer> dependingPlugins = pluginManager.getPluginsDependingOn(pluginId);
-
-            if (!dependingPlugins.isEmpty()) {
-                TextComponent.Builder builder = Component.text();
-                builder.append(messages.get(MessageKey.DEPENDING_PLUGINS_PREFIX).toComponent(
-                        Placeholder.unparsed("plugin", pluginId)
-                ));
-                builder.append(ListComponentBuilder.create(dependingPlugins)
-                        .format(p -> messages.get(MessageKey.DEPENDING_PLUGINS_FORMAT).toComponent(
-                                Placeholder.unparsed("plugin", pluginManager.getPluginId(p))
-                        ))
-                        .separator(messages.get(MessageKey.DEPENDING_PLUGINS_SEPARATOR).toComponent())
-                        .lastSeparator(messages.get(MessageKey.DEPENDING_PLUGINS_LAST_SEPARATOR).toComponent())
-                        .build());
-                sender.sendMessage(builder.build());
-                hasDependingPlugins = true;
-            }
-        }
-
-        if (hasDependingPlugins) {
-            String flagPath = getRawPath(subcommand) + ".flags.force";
-            String forceFlag = plugin.getCommandsResource().getAllFlagAliases(flagPath).stream()
-                    .min(Comparator.comparingInt(String::length))
-                    .orElse("-f");
-
-            sender.sendMessage(messages.get(MessageKey.DEPENDING_PLUGINS_OVERRIDE).toComponent(
-                    Placeholder.unparsed("command", context.rawInput() + " " + forceFlag)
-            ));
-        }
-
-        return hasDependingPlugins;
-    }
-
-    protected boolean checkVHR(
-            CommandContext<VelocityAudience> context,
-            VelocityAudience sender,
-            List<PluginContainer> plugins
-    ) {
-        for (PluginContainer loadedPlugin : plugins) {
-            if (plugin.getPlugin() == loadedPlugin) {
-                String restartCommand = plugin.getCommandsResource().getAllAliases(getRawPath("restart")).stream()
-                        .min(Comparator.comparingInt(String::length))
-                        .orElse("restart");
-                Component component = plugin.getMessagesResource().get(MessageKey.RELOADPLUGIN_VHR).toComponent(
-                        Placeholder.unparsed("command",
-                                context.rawInput().cursor(0).peekString() + " " + restartCommand)
-                );
-                sender.sendMessage(component);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    protected boolean checkProtectedPlugins(VelocityAudience sender, List<PluginContainer> plugins) {
-        List<String> protectedPlugins = plugin.getConfigResource().getConfig().getStringList("protected-plugins");
-        VelocityPluginManager pluginManager = plugin.getPluginManager();
-        MessagesResource messagesResource = plugin.getMessagesResource();
-        for (PluginContainer pluginContainer : plugins) {
-            String pluginId = pluginManager.getPluginId(pluginContainer);
-            if (protectedPlugins.contains(pluginId)) {
-                sender.sendMessage(messagesResource.get(MessageKey.GENERIC_PROTECTED_PLUGIN).toComponent(
-                        Placeholder.unparsed("plugin", pluginId)
-                ));
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private void handleWatchPlugin(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
-        List<PluginContainer> plugins = Arrays.asList(context.get("plugins"));
-
-        if (checkDependingPlugins(context, sender, plugins, "watchplugin")) {
+    private void handleWatchPlugin(VelocityAudience sender, List<PluginContainer> plugins, boolean force, String rawInput) {
+        if (checkDependingPlugins(sender, plugins, force, rawInput)) {
             return;
         }
 
-        if (checkVHR(context, sender, plugins)) {
+        if (checkVHR(sender, plugins, rootLiteral(rawInput))) {
             return;
         }
 
@@ -346,23 +360,75 @@ public class CommandVHR extends VHRCommand {
         watchResults.sendTo(sender);
     }
 
-    private void handleUnwatchPlugin(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
-        PluginContainer pluginArg = context.get("plugin");
+    private boolean checkDependingPlugins(
+            VelocityAudience sender,
+            List<PluginContainer> plugins,
+            boolean force,
+            String rawInput
+    ) {
+        if (force) {
+            return false;
+        }
 
+        VelocityPluginManager pluginManager = plugin.getPluginManager();
+        MessagesResource messages = plugin.getMessagesResource();
+
+        boolean hasDependingPlugins = false;
+        for (PluginContainer pluginContainer : plugins) {
+            String pluginId = pluginManager.getPluginId(pluginContainer);
+            List<PluginContainer> dependingPlugins = pluginManager.getPluginsDependingOn(pluginId);
+            if (dependingPlugins.isEmpty()) {
+                continue;
+            }
+
+            TextComponent.Builder builder = Component.text();
+            builder.append(messages.get(MessageKey.DEPENDING_PLUGINS_PREFIX).toComponent(
+                    Placeholder.unparsed("plugin", pluginId)
+            ));
+            builder.append(ListComponentBuilder.create(dependingPlugins)
+                    .format(p -> messages.get(MessageKey.DEPENDING_PLUGINS_FORMAT).toComponent(
+                            Placeholder.unparsed("plugin", pluginManager.getPluginId(p))
+                    ))
+                    .separator(messages.get(MessageKey.DEPENDING_PLUGINS_SEPARATOR).toComponent())
+                    .lastSeparator(messages.get(MessageKey.DEPENDING_PLUGINS_LAST_SEPARATOR).toComponent())
+                    .build());
+            sender.sendMessage(builder.build());
+            hasDependingPlugins = true;
+        }
+
+        if (hasDependingPlugins) {
+            sender.sendMessage(messages.get(MessageKey.DEPENDING_PLUGINS_OVERRIDE).toComponent(
+                    Placeholder.unparsed("command", rawInput + " -f")
+            ));
+        }
+        return hasDependingPlugins;
+    }
+
+    private boolean checkVHR(VelocityAudience sender, List<PluginContainer> plugins, String commandRoot) {
+        for (PluginContainer loadedPlugin : plugins) {
+            if (plugin.getPlugin() != loadedPlugin) {
+                continue;
+            }
+            Component component = plugin.getMessagesResource().get(MessageKey.RELOADPLUGIN_VHR).toComponent(
+                    Placeholder.unparsed("command", commandRoot + " restart")
+            );
+            sender.sendMessage(component);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleUnwatchPlugin(VelocityAudience sender, PluginContainer pluginArg) {
         String pluginId = plugin.getPluginManager().getPluginId(pluginArg);
         PluginWatchResults watchResults = plugin.getWatchManager().unwatchPluginsAssociatedWith(pluginId);
         watchResults.sendTo(sender);
     }
 
-    private void handlePluginInfo(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
-        PluginContainer pluginArg = context.get("plugin");
-
+    private void handlePluginInfo(VelocityAudience sender, PluginContainer pluginArg) {
         createInfo(sender, "plugininfo", pluginArg, this::createPluginInfo);
     }
 
-    protected KeyValueComponentBuilder createPluginInfo(
+    private KeyValueComponentBuilder createPluginInfo(
             KeyValueComponentBuilder builder,
             Function<Consumer<ListComponentBuilder<String>>, Component> listBuilderFunction,
             PluginContainer pluginArg
@@ -384,19 +450,17 @@ public class CommandVHR extends VHRCommand {
                         .collect(Collectors.toList()))));
     }
 
-    private void handleCommandInfo(CommandContext<VelocityAudience> context) {
-        VelocityAudience sender = context.sender();
-        String commandName = context.get("command");
-
-        if (!plugin.getPluginManager().getCommands().contains(commandName)) {
+    private void handleCommandInfo(VelocityAudience sender, String commandName) {
+        String parsedCommand = parseCommand(commandName);
+        if (parsedCommand == null) {
             plugin.getMessagesResource().get(MessageKey.COMMANDINFO_NOT_EXISTS).sendTo(sender);
             return;
         }
 
-        createInfo(sender, "commandinfo", commandName, this::createCommandInfo);
+        createInfo(sender, "commandinfo", parsedCommand, this::createCommandInfo);
     }
 
-    protected KeyValueComponentBuilder createCommandInfo(
+    private KeyValueComponentBuilder createCommandInfo(
             KeyValueComponentBuilder builder,
             Function<Consumer<ListComponentBuilder<String>>, Component> listBuilderFunction,
             String commandName
@@ -405,7 +469,11 @@ public class CommandVHR extends VHRCommand {
         com.velocitypowered.api.command.CommandManager proxyCommandManager = proxyPlugin.getProxy().getCommandManager();
         CommandDispatcher<CommandSource> dispatcher = RVelocityCommandManager.getDispatcher(proxyCommandManager);
 
-        builder.key("Name").value(dispatcher.getRoot().getChild(commandName).getName());
+        String commandNodeName = commandName;
+        if (dispatcher.getRoot().getChild(commandName) != null) {
+            commandNodeName = dispatcher.getRoot().getChild(commandName).getName();
+        }
+        builder.key("Name").value(commandNodeName);
 
         CommandMeta meta = null;
         try {
@@ -421,7 +489,6 @@ public class CommandVHR extends VHRCommand {
                         .map(c -> c.getDescription().getId())
                         .orElse(null);
             }
-
             CommandMeta finalMeta = meta;
             builder.key("Aliases").value(listBuilderFunction.apply(b -> b.addAll(finalMeta.getAliases())));
         }
@@ -430,14 +497,11 @@ public class CommandVHR extends VHRCommand {
             pluginName = proxyPlugin.getPluginCommandManager().findPluginId(commandName).orElse("<UNKNOWN>");
         }
 
-        builder.key("Plugin").value(pluginName);
-
-        return builder;
+        return builder.key("Plugin").value(pluginName);
     }
 
     private <T> void createInfo(VelocityAudience sender, String command, T item, InfoCreator<T> creator) {
         MessagesResource messages = plugin.getMessagesResource();
-
         MessagesResource.Message formatMessage = messages.get(command + ".format");
         MessagesResource.Message listFormatMessage = messages.get(command + ".list-format");
         Component separator = messages.get(command + ".list-separator").toComponent();
@@ -460,12 +524,219 @@ public class CommandVHR extends VHRCommand {
         sender.sendMessage(messages.get(command + ".footer").toComponent());
     }
 
-    private interface InfoCreator<T> {
+    private void handlePlugins(VelocityAudience sender, boolean hasVersionFlag) {
+        List<PluginContainer> plugins = plugin.getPluginManager().getPluginsSorted();
+        VelocityPluginManager pluginManager = plugin.getPluginManager();
+        MessagesResource messages = plugin.getMessagesResource();
 
+        sender.sendMessage(messages.get(MessageKey.PLUGINS_HEADER).toComponent());
+        TextComponent.Builder builder = Component.text();
+        builder.append(messages.get(MessageKey.PLUGINS_PREFIX).toComponent(
+                Placeholder.unparsed("count", String.valueOf(plugins.size()))
+        ));
+        builder.append(ListComponentBuilder.create(plugins)
+                .separator(messages.get(MessageKey.PLUGINS_SEPARATOR).toComponent())
+                .lastSeparator(messages.get(MessageKey.PLUGINS_LAST_SEPARATOR).toComponent())
+                .format(pluginContainer -> {
+                    VelocityPluginDescription description = pluginManager.getLoadedPluginDescription(pluginContainer);
+
+                    TextComponent.Builder formatBuilder = Component.text();
+                    MessageKey formatKey = pluginManager.isPluginEnabled(pluginContainer)
+                            ? MessageKey.PLUGINS_FORMAT
+                            : MessageKey.PLUGINS_FORMAT_DISABLED;
+                    formatBuilder.append(messages.get(formatKey).toComponent(
+                            Placeholder.unparsed("plugin", description.getName())
+                    ));
+                    if (hasVersionFlag) {
+                        formatBuilder.append(messages.get(MessageKey.PLUGINS_VERSION).toComponent(
+                                Placeholder.unparsed("version", description.getVersion())
+                        ));
+                    }
+                    return formatBuilder.build();
+                })
+                .build());
+        sender.sendMessage(builder.build());
+        sender.sendMessage(messages.get(MessageKey.PLUGINS_FOOTER).toComponent());
+    }
+
+    private PluginContainer parsePlugin(String input) {
+        PluginContainer exact = plugin.getPluginManager().getPlugin(input).orElse(null);
+        if (exact != null) {
+            return exact;
+        }
+
+        for (PluginContainer loadedPlugin : plugin.getPluginManager().getPlugins()) {
+            String pluginId = plugin.getPluginManager().getPluginId(loadedPlugin);
+            if (pluginId.equalsIgnoreCase(input)) {
+                return loadedPlugin;
+            }
+        }
+        return null;
+    }
+
+    private String parseCommand(String input) {
+        return plugin.getPluginManager().getCommands().stream()
+                .filter(command -> command.equalsIgnoreCase(input))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private ParsedPlugins parsePlugins(String rawInput, Set<String> forceFlags) {
+        List<String> tokens = parseTokens(rawInput);
+        if (tokens.isEmpty()) {
+            return new ParsedPlugins(List.of(), false, null);
+        }
+
+        boolean force = false;
+        List<PluginContainer> plugins = new ArrayList<>(tokens.size());
+        for (String token : tokens) {
+            if (forceFlags.contains(token)) {
+                force = true;
+                continue;
+            }
+            PluginContainer pluginContainer = parsePlugin(token);
+            if (pluginContainer == null) {
+                return new ParsedPlugins(List.of(), force, token);
+            }
+            plugins.add(pluginContainer);
+        }
+        return new ParsedPlugins(plugins, force, null);
+    }
+
+    private ParsedJarFiles parseJarFiles(String rawInput) {
+        List<String> tokens = parseTokens(rawInput);
+        if (tokens.isEmpty()) {
+            return new ParsedJarFiles(List.of(), null);
+        }
+
+        Set<String> pluginFiles = new HashSet<>(plugin.getPluginManager().getPluginFileNames());
+        List<File> parsed = new ArrayList<>(tokens.size());
+        File pluginsFolder = plugin.getPluginManager().getPluginsFolder();
+        for (String token : tokens) {
+            if (!pluginFiles.contains(token) || pluginsFolder == null) {
+                return new ParsedJarFiles(List.of(), token);
+            }
+            parsed.add(new File(pluginsFolder, token));
+        }
+        return new ParsedJarFiles(parsed, null);
+    }
+
+    private List<String> parseTokens(String input) {
+        if (input == null || input.isBlank()) {
+            return List.of();
+        }
+
+        List<String> tokens = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean quoted = false;
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == '"') {
+                quoted = !quoted;
+                continue;
+            }
+
+            if (!quoted && Character.isWhitespace(c)) {
+                if (!current.isEmpty()) {
+                    tokens.add(current.toString());
+                    current.setLength(0);
+                }
+                continue;
+            }
+            current.append(c);
+        }
+        if (!current.isEmpty()) {
+            tokens.add(current.toString());
+        }
+        return tokens;
+    }
+
+    private CompletableFuture<Suggestions> suggestPlugins(SuggestionsBuilder builder) {
+        return suggestSimple(builder, plugin.getPluginManager().getPluginNames());
+    }
+
+    private CompletableFuture<Suggestions> suggestCommands(SuggestionsBuilder builder) {
+        return suggestSimple(builder, plugin.getPluginManager().getCommands());
+    }
+
+    private CompletableFuture<Suggestions> suggestJarFiles(SuggestionsBuilder builder) {
+        return suggestMultipleTokens(builder, plugin.getPluginManager().getPluginFileNames());
+    }
+
+    private CompletableFuture<Suggestions> suggestPluginsAndFlags(SuggestionsBuilder builder, Set<String> flags) {
+        List<String> suggestions = new ArrayList<>(plugin.getPluginManager().getPluginNames());
+        suggestions.addAll(flags);
+        return suggestMultipleTokens(builder, suggestions);
+    }
+
+    private CompletableFuture<Suggestions> suggestSimple(SuggestionsBuilder builder, Iterable<String> values) {
+        String remaining = builder.getRemainingLowerCase();
+        for (String value : values) {
+            String lower = value.toLowerCase(Locale.ROOT);
+            if (lower.startsWith(remaining)) {
+                builder.suggest(value);
+            }
+        }
+        return builder.buildFuture();
+    }
+
+    private CompletableFuture<Suggestions> suggestMultipleTokens(SuggestionsBuilder builder, Iterable<String> values) {
+        String remaining = builder.getRemaining();
+        int splitIndex = remaining.lastIndexOf(' ');
+
+        String prefix = splitIndex == -1 ? "" : remaining.substring(0, splitIndex + 1);
+        String token = splitIndex == -1 ? remaining : remaining.substring(splitIndex + 1);
+
+        Set<String> usedTokens = parseTokens(prefix.trim()).stream()
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+
+        SuggestionsBuilder offsetBuilder = builder.createOffset(builder.getStart() + prefix.length());
+        String tokenLower = token.toLowerCase(Locale.ROOT);
+        for (String value : values) {
+            String lower = value.toLowerCase(Locale.ROOT);
+            if (!tokenLower.isEmpty() && !lower.startsWith(tokenLower)) {
+                continue;
+            }
+            if (usedTokens.contains(lower)) {
+                continue;
+            }
+            offsetBuilder.suggest(value);
+        }
+        return offsetBuilder.buildFuture();
+    }
+
+    private void sendPluginNotExists(VelocityAudience audience, String pluginId) {
+        audience.sendMessage(plugin.getMessagesResource().get(MessageKey.GENERIC_NOT_EXISTS).toComponent(
+                Placeholder.unparsed("plugin", pluginId)
+        ));
+    }
+
+    private void sendError(VelocityAudience audience, String message) {
+        audience.sendMessage(Component.text(message, NamedTextColor.RED));
+    }
+
+    private String rootLiteral(String input) {
+        if (input == null || input.isBlank()) {
+            return ROOT_COMMAND;
+        }
+        int firstSpace = input.indexOf(' ');
+        return firstSpace == -1 ? input : input.substring(0, firstSpace);
+    }
+
+    private interface PluginBatchHandler {
+        void handle(VelocityAudience sender, List<PluginContainer> plugins, boolean force, String rawInput);
+    }
+
+    private interface InfoCreator<T> {
         KeyValueComponentBuilder createInfo(
                 KeyValueComponentBuilder builder,
                 Function<Consumer<ListComponentBuilder<String>>, Component> listBuilderFunction,
                 T item
         );
     }
+
+    private record ParsedPlugins(List<PluginContainer> plugins, boolean force, String invalidPlugin) {}
+
+    private record ParsedJarFiles(List<File> files, String invalidJarFile) {}
 }

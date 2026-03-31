@@ -45,7 +45,6 @@ public class RVelocityCommandManager {
     /**
      * Proxies the registrars.
      */
-    @SuppressWarnings("deprecation")
     public static void proxyRegistrars(
             ProxyServer proxy,
             ClassLoader loader,
@@ -101,10 +100,7 @@ public class RVelocityCommandManager {
         private void handleRegisterMethod(CommandMeta commandMeta) {
             Map<ClassLoader, PluginContainer> pluginsByLoader = new HashMap<>();
             for (PluginContainer container : proxy.getPluginManager().getPlugins()) {
-                Object instance = container.getInstance().orElse(null);
-                if (instance != null) {
-                    pluginsByLoader.put(instance.getClass().getClassLoader(), container);
-                }
+                container.getInstance().ifPresent(instance -> pluginsByLoader.put(instance.getClass().getClassLoader(), container));
             }
 
             PluginContainer container = STACK_WALKER.walk(frames -> frames
@@ -112,7 +108,7 @@ public class RVelocityCommandManager {
                     .filter(Objects::nonNull)
                     .dropWhile(classLoader -> classLoader == CURRENT_PLUGIN_CLASS_LOADER)
                     .map(pluginsByLoader::get)
-                    .filter(found -> found != null)
+                    .filter(Objects::nonNull)
                     .findFirst()
                     .orElse(null));
             if (container != null) {

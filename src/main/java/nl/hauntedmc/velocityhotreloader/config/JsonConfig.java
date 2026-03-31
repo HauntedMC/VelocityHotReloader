@@ -8,6 +8,7 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -38,18 +39,25 @@ public class JsonConfig implements VHRConfig {
      * Loads a resource from the jar file.
      */
     public static JsonConfig load(ResourceProvider provider, String resourceName) {
-        // Merge velocity overrides into the shared default config.
+        InputStream baseStream = provider.getRawResource(resourceName + ".json");
+        if (baseStream == null) {
+            throw new IllegalStateException("Unable to find bundled resource '" + resourceName + ".json'");
+        }
+
         JsonConfig generalConfig = new JsonConfig(JsonConfig.gson.fromJson(
-                new InputStreamReader(provider.getRawResource(resourceName + ".json")),
+                new InputStreamReader(baseStream, StandardCharsets.UTF_8),
                 JsonObject.class
         ));
 
-        String velocityResource = "velocity-" + resourceName;
-        JsonConfig velocityConfig = new JsonConfig(JsonConfig.gson.fromJson(
-                new InputStreamReader(provider.getRawResource(velocityResource + ".json")),
-                JsonObject.class
-        ));
-        VHRConfig.addDefaults(velocityConfig, generalConfig);
+        String velocityResource = "velocity-" + resourceName + ".json";
+        InputStream velocityStream = provider.getRawResource(velocityResource);
+        if (velocityStream != null) {
+            JsonConfig velocityConfig = new JsonConfig(JsonConfig.gson.fromJson(
+                    new InputStreamReader(velocityStream, StandardCharsets.UTF_8),
+                    JsonObject.class
+            ));
+            VHRConfig.addDefaults(velocityConfig, generalConfig);
+        }
 
         return generalConfig;
     }
