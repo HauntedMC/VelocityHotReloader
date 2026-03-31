@@ -106,7 +106,12 @@ public class VelocityPluginManager {
     }
 
     public Optional<File> getPluginFile(String pluginName) {
-        Object javaPluginLoader = RJavaPluginLoader.newInstance(proxy, getPluginsFolder().toPath());
+        File pluginsFolder = getPluginsFolder();
+        if (pluginsFolder == null) {
+            return Optional.empty();
+        }
+
+        Object javaPluginLoader = RJavaPluginLoader.newInstance(proxy, pluginsFolder.toPath());
 
         for (File file : getPluginJars()) {
             PluginDescription desc = RJavaPluginLoader.loadPluginDescription(javaPluginLoader, file.toPath());
@@ -139,8 +144,12 @@ public class VelocityPluginManager {
     public Optional<VelocityPluginDescription> getPluginDescription(
             String pluginId
     ) throws InvalidPluginDescriptionException {
-        Optional<File> fileOptional = getPluginFile(pluginId);
-        return fileOptional.isPresent() ? getPluginDescription(fileOptional.get()) : Optional.empty();
+        File pluginFile = getPluginFile(pluginId).orElse(null);
+        if (pluginFile == null) {
+            return Optional.empty();
+        }
+
+        return getPluginDescription(pluginFile);
     }
 
     public Optional<VelocityPluginDescription> getPluginDescription(
@@ -202,12 +211,12 @@ public class VelocityPluginManager {
         for (File file : files) {
             VelocityPluginDescription description;
             try {
-                Optional<VelocityPluginDescription> descriptionOptional = getPluginDescription(file);
-                if (!descriptionOptional.isPresent()) {
+                VelocityPluginDescription parsedDescription = getPluginDescription(file).orElse(null);
+                if (parsedDescription == null) {
                     return new PluginResults<PluginContainer>().addResult(file.getName(), Result.NOT_EXISTS);
                 }
 
-                description = descriptionOptional.get();
+                description = parsedDescription;
             } catch (InvalidPluginDescriptionException ex) {
                 logger.warn("Invalid plugin description for '{}'", file, ex);
                 return new PluginResults<PluginContainer>().addResult(file.getName(), Result.INVALID_DESCRIPTION);
@@ -248,9 +257,9 @@ public class VelocityPluginManager {
     }
 
     public PluginResults<PluginContainer> enablePlugins(List<PluginContainer> plugins) {
-        Optional<PluginContainer> pluginOptional = checkPluginStates(plugins, false);
-        if (pluginOptional.isPresent()) {
-            return new PluginResults<PluginContainer>().addResult(getPluginId(pluginOptional.get()), Result.ALREADY_ENABLED);
+        PluginContainer invalidStatePlugin = checkPluginStates(plugins, false).orElse(null);
+        if (invalidStatePlugin != null) {
+            return new PluginResults<PluginContainer>().addResult(getPluginId(invalidStatePlugin), Result.ALREADY_ENABLED);
         }
 
         return enableOrderedPlugins(determineLoadOrder(plugins));
@@ -284,9 +293,9 @@ public class VelocityPluginManager {
     }
 
     public PluginResults<PluginContainer> disablePlugins(List<PluginContainer> plugins) {
-        Optional<PluginContainer> pluginOptional = checkPluginStates(plugins, true);
-        if (pluginOptional.isPresent()) {
-            return new PluginResults<PluginContainer>().addResult(getPluginId(pluginOptional.get()), Result.ALREADY_DISABLED);
+        PluginContainer invalidStatePlugin = checkPluginStates(plugins, true).orElse(null);
+        if (invalidStatePlugin != null) {
+            return new PluginResults<PluginContainer>().addResult(getPluginId(invalidStatePlugin), Result.ALREADY_DISABLED);
         }
 
         List<PluginContainer> orderedPlugins;
@@ -338,11 +347,11 @@ public class VelocityPluginManager {
 
         List<File> pluginFiles = new ArrayList<>(plugins.size());
         for (String pluginId : pluginIds) {
-            Optional<File> pluginFile = getPluginFile(pluginId);
-            if (!pluginFile.isPresent()) {
+            File pluginFile = getPluginFile(pluginId).orElse(null);
+            if (pluginFile == null) {
                 return new PluginResults<PluginContainer>().addResult(pluginId, Result.FILE_DELETED);
             }
-            pluginFiles.add(pluginFile.get());
+            pluginFiles.add(pluginFile);
         }
 
         PluginResults<PluginContainer> loadResults = loadPlugins(pluginFiles);
@@ -529,9 +538,8 @@ public class VelocityPluginManager {
             );
 
             RVelocityPluginManager.registerPlugin(proxy.getPluginManager(), container);
-            Optional<?> instanceOptional = container.getInstance();
-            if (instanceOptional.isPresent()) {
-                Object pluginInstance = instanceOptional.get();
+            Object pluginInstance = container.getInstance().orElse(null);
+            if (pluginInstance != null) {
                 RVelocityEventManager.registerInternally(proxy.getEventManager(), container, pluginInstance);
                 pluginInstances.add(pluginInstance);
             }
@@ -609,12 +617,10 @@ public class VelocityPluginManager {
         for (PluginContainer container : containers) {
             proxy.getEventManager().fire(new VelocityPluginUnloadEvent(container, VelocityPluginEvent.Stage.PRE));
             String pluginId = getPluginId(container);
-            Optional<?> pluginInstanceOptional = container.getInstance();
-            if (!pluginInstanceOptional.isPresent()) {
+            Object pluginInstance = container.getInstance().orElse(null);
+            if (pluginInstance == null) {
                 return unloadResults.addResult(pluginId, Result.INVALID_PLUGIN);
             }
-
-            Object pluginInstance = pluginInstanceOptional.get();
 
             proxy.getEventManager().unregisterListeners(pluginInstance);
             for (ScheduledTask task : RVelocityScheduler.getTasksByPlugin(proxy.getScheduler())

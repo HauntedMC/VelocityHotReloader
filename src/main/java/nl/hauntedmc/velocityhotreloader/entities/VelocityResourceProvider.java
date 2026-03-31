@@ -26,16 +26,27 @@ public class VelocityResourceProvider implements ResourceProvider {
 
     @Override
     public VHRConfig load(InputStream is) {
+        if (is == null) {
+            throw new IllegalArgumentException("Input stream cannot be null");
+        }
+
+        Path tmpFile = null;
         try {
-            Path tmpFile = Files.createTempFile(null, null);
-            Files.copy(is, tmpFile, StandardCopyOption.REPLACE_EXISTING);
-
-            VelocityTomlConfig config = new VelocityTomlConfig(tmpFile.toFile());
-            Files.delete(tmpFile);
-
-            return config;
+            tmpFile = Files.createTempFile("vhr-", ".tmp");
+            try (InputStream input = is) {
+                Files.copy(input, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+            return new VelocityTomlConfig(tmpFile.toFile());
         } catch (IOException ex) {
             throw new UncheckedIOException("Unable to load configuration from resource stream", ex);
+        } finally {
+            if (tmpFile != null) {
+                try {
+                    Files.deleteIfExists(tmpFile);
+                } catch (IOException ignored) {
+                    //
+                }
+            }
         }
     }
 

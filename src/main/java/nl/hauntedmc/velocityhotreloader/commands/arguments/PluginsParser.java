@@ -13,7 +13,6 @@ import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 public class PluginsParser implements
@@ -58,14 +57,15 @@ public class PluginsParser implements
         while (commandInput.hasRemainingInput()) {
             String pluginName = commandInput.peekString();
             if (flags.contains(pluginName)) {
+                commandInput.readString();
                 continue;
             }
-            Optional<PluginContainer> pluginOptional = plugin.getPluginManager().getPlugin(pluginName);
-            if (pluginOptional.isEmpty()) {
+            PluginContainer parsedPlugin = plugin.getPluginManager().getPlugin(pluginName).orElse(null);
+            if (parsedPlugin == null) {
                 return ArgumentParseResult.failure(new IllegalArgumentException("Plugin '" + pluginName + "' does not exist!"));
             }
             commandInput.readString();
-            plugins.add(pluginOptional.get());
+            plugins.add(parsedPlugin);
         }
         return ArgumentParseResult.success(plugins.toArray(PluginContainer[]::new));
     }

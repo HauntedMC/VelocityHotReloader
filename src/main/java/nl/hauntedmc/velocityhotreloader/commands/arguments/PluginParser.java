@@ -11,8 +11,6 @@ import org.incendo.cloud.parser.ArgumentParser;
 import org.incendo.cloud.parser.ParserDescriptor;
 import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 
-import java.util.Optional;
-
 public class PluginParser implements
         ArgumentParser<VelocityAudience, PluginContainer>,
         BlockingSuggestionProvider.Strings<VelocityAudience> {
@@ -39,13 +37,13 @@ public class PluginParser implements
             return ArgumentParseResult.failure(new IllegalArgumentException("Missing input for plugin!"));
         }
         String pluginName = commandInput.peekString();
-        Optional<PluginContainer> pluginOptional = plugin.getPluginManager().getPlugin(pluginName);
-        if (pluginOptional.isEmpty()) {
+        PluginContainer parsedPlugin = plugin.getPluginManager().getPlugin(pluginName).orElse(null);
+        if (parsedPlugin == null) {
             return ArgumentParseResult.failure(new IllegalArgumentException("Plugin '" + pluginName + "' does not exist!"));
         }
 
         commandInput.readString();
-        return ArgumentParseResult.success(pluginOptional.get());
+        return ArgumentParseResult.success(parsedPlugin);
     }
 
     @Override

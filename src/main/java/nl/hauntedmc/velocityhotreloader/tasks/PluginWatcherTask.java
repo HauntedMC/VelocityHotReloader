@@ -62,6 +62,9 @@ public class PluginWatcherTask extends AbstractTask {
         VelocityPluginManager pluginManager = plugin.getPluginManager();
         for (PluginContainer watchPlugin : plugins) {
             File file = pluginManager.getPluginFile(watchPlugin);
+            if (file == null) {
+                continue;
+            }
 
             WatchEntry entry = new WatchEntry(pluginManager.getPluginId(watchPlugin));
             entry.update(file);
@@ -115,18 +118,18 @@ public class PluginWatcherTask extends AbstractTask {
                 return;
             }
 
-            if (descriptionOptional.isPresent()) {
-                VelocityPluginDescription description = descriptionOptional.get();
+            descriptionOptional.ifPresent(description -> {
                 WatchEntry foundEntry = pluginIdToWatchEntryMap.remove(description.getId());
                 if (foundEntry != null) {
                     send(WatchResult.DELETED_FILE_IS_CREATED, Placeholder.unparsed("plugin", foundEntry.pluginId));
                     fileNameToWatchEntryMap.put(fileName, foundEntry);
 
                     if (pluginIdToWatchEntryMap.isEmpty()) {
-                        entry = foundEntry;
+                        checkWatchEntry(foundEntry, fileName);
                     }
                 }
-            }
+            });
+            return;
         }
 
         if (entry != null) {
@@ -140,8 +143,8 @@ public class PluginWatcherTask extends AbstractTask {
         }
 
         VelocityPluginManager pluginManager = plugin.getPluginManager();
-        Optional<File> fileOptional = pluginManager.getPluginFile(entry.pluginId);
-        if (!fileOptional.isPresent()) {
+        File pluginFile = pluginManager.getPluginFile(entry.pluginId).orElse(null);
+        if (pluginFile == null) {
             send(WatchResult.FILE_DELETED, Placeholder.unparsed("plugin", entry.pluginId));
 
             fileNameToWatchEntryMap.remove(fileName);
@@ -151,7 +154,7 @@ public class PluginWatcherTask extends AbstractTask {
 
         String previousHash = entry.hash;
         long previousTimestamp = entry.timestamp;
-        entry.update(fileOptional.get());
+        entry.update(pluginFile);
 
         // Debounce multiple rapid file system events into a single reload operation.
         task = plugin.getTaskManager().runTaskLater(() -> {
@@ -161,10 +164,12 @@ public class PluginWatcherTask extends AbstractTask {
                 List<PluginContainer> plugins = new ArrayList<>(fileNameToWatchEntryMap.size());
                 Map<String, WatchEntry> retainedWatchEntries = new HashMap<>();
                 for (WatchEntry oldEntry : fileNameToWatchEntryMap.values()) {
-                    Optional<PluginContainer> pluginOptional = pluginManager.getPlugin(oldEntry.pluginId);
-                    if (!pluginOptional.isPresent()) continue;
+                    PluginContainer pluginContainer = pluginManager.getPlugin(oldEntry.pluginId).orElse(null);
+                    if (pluginContainer == null) {
+                        continue;
+                    }
 
-                    plugins.add(pluginOptional.get());
+                    plugins.add(pluginContainer);
                     retainedWatchEntries.put(oldEntry.pluginId, oldEntry);
                 }
 
@@ -180,7 +185,11 @@ public class PluginWatcherTask extends AbstractTask {
                     String pluginId = pluginManager.getPluginId(reloadedPlugin);
 
                     WatchEntry retainedEntry = retainedWatchEntries.get(pluginId);
-                    String pluginFileName = pluginManager.getPluginFile(reloadedPlugin).getName();
+                    File reloadedPluginFile = pluginManager.getPluginFile(reloadedPlugin);
+                    if (reloadedPluginFile == null) {
+                        continue;
+                    }
+                    String pluginFileName = reloadedPluginFile.getName();
                     fileNameToWatchEntryMap.put(pluginFileName, retainedEntry);
                 }
             }

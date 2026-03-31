@@ -10,8 +10,6 @@ import org.incendo.cloud.parser.ArgumentParser;
 import org.incendo.cloud.parser.ParserDescriptor;
 import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 
-import java.util.Optional;
-
 public class CommandParser implements
         ArgumentParser<VelocityAudience, String>,
         BlockingSuggestionProvider.Strings<VelocityAudience> {
@@ -39,16 +37,17 @@ public class CommandParser implements
         }
 
         String commandName = commandInput.peekString();
-        Optional<String> commandOptional = plugin.getPluginManager().getCommands().stream()
+        String parsedCommand = plugin.getPluginManager().getCommands().stream()
                 .filter(command -> command.equalsIgnoreCase(commandName))
-                .findFirst();
+                .findFirst()
+                .orElse(null);
 
-        if (commandOptional.isEmpty()) {
+        if (parsedCommand == null) {
             return ArgumentParseResult.failure(new IllegalArgumentException("Command '" + commandName + "' does not exist!"));
         }
 
         commandInput.readString();
-        return ArgumentParseResult.success(commandOptional.get());
+        return ArgumentParseResult.success(parsedCommand);
     }
 
     @Override

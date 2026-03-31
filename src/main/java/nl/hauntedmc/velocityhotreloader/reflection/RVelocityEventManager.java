@@ -18,21 +18,20 @@ public class RVelocityEventManager {
 
     private RVelocityEventManager() {}
 
-    @SuppressWarnings("rawtypes")
-    public static Multimap getHandlersByType(EventManager manager) {
-        return reflection.get(manager, "handlersByType");
+    @SuppressWarnings("unchecked")
+    public static Multimap<Class<?>, Object> getHandlersByType(EventManager manager) {
+        return (Multimap<Class<?>, Object>) reflection.get(manager, "handlersByType");
     }
 
     /**
      * Retrieves the registrations from a plugin for a specific event.
      */
-    @SuppressWarnings("unchecked")
     public static List<Object> getRegistrationsByPlugins(
             EventManager manager,
             List<Object> plugins,
             Class<?> eventClass
     ) {
-        return (List<Object>) getHandlersByType(manager).get(eventClass).stream()
+        return getHandlersByType(manager).get(eventClass).stream()
                 .filter(r -> plugins.contains(RHandlerRegistration.getPlugin(r).getInstance().orElse(null)))
                 .sorted(reflection.get(manager, "handlerComparator"))
                 .collect(Collectors.toList());

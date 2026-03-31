@@ -32,7 +32,13 @@ public class FileUtils {
      */
     public static boolean saveResource(InputStream in, File target) throws IOException {
         if (target.exists()) return false;
-        Files.copy(in, target.toPath());
+        if (in == null) {
+            throw new IllegalArgumentException("Resource input stream cannot be null");
+        }
+
+        try (InputStream input = in) {
+            Files.copy(input, target.toPath());
+        }
         return true;
     }
 

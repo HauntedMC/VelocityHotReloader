@@ -11,13 +11,13 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import nl.hauntedmc.velocityhotreloader.commands.CommandPlugins;
 import nl.hauntedmc.velocityhotreloader.commands.CommandVHR;
 import nl.hauntedmc.velocityhotreloader.commands.brigadier.BrigadierHandler;
@@ -181,8 +181,13 @@ public class VHR {
     }
 
     public void createDataFolderIfNotExists() {
-        if (getDataFolder().exists()) return;
-        getDataFolder().mkdirs();
+        if (getDataFolder().exists()) {
+            return;
+        }
+
+        if (!getDataFolder().mkdirs() && !getDataFolder().exists()) {
+            throw new IllegalStateException("Unable to create plugin data folder at " + getDataFolder());
+        }
     }
 
     public File copyResourceIfNotExists(String targetName, String resource) {
@@ -192,7 +197,13 @@ public class VHR {
         if (!file.exists()) {
             slf4jLogger.info("'{}' not found, creating!", targetName);
             try {
-                FileUtils.saveResource(getResourceProvider().getResource(resource), file);
+                InputStream resourceStream = getResourceProvider().getResource(resource);
+                if (resourceStream == null) {
+                    slf4jLogger.error("Unable to find bundled resource '{}'", resource);
+                    return file;
+                }
+
+                FileUtils.saveResource(resourceStream, file);
             } catch (IOException ex) {
                 slf4jLogger.error("Failed to copy resource '{}' to '{}'", resource, file, ex);
             }
@@ -225,15 +236,15 @@ public class VHR {
         List<String> pluginIds = configResource.getConfig().getStringList("unload-after-startup.plugins");
         List<PluginContainer> plugins = new ArrayList<>(pluginIds.size());
         for (String pluginId : pluginIds) {
-            Optional<PluginContainer> pluginOptional = getPluginManager().getPlugin(pluginId);
-            if (!pluginOptional.isPresent()) {
+            PluginContainer pluginContainer = getPluginManager().getPlugin(pluginId).orElse(null);
+            if (pluginContainer == null) {
                 slf4jLogger.warn(
                         "Plugin '{}' defined in config.yml 'unload-after-startup' is not loaded!",
                         pluginId
                 );
                 continue;
             }
-            plugins.add(pluginOptional.get());
+            plugins.add(pluginContainer);
         }
 
         if (plugins.isEmpty()) return;

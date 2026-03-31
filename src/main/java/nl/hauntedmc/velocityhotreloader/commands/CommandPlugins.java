@@ -19,7 +19,6 @@ import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 
-@SuppressWarnings("LineLength")
 public class CommandPlugins extends VHRCommand {
 
     public CommandPlugins(VHR plugin) {

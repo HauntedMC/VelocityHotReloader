@@ -17,7 +17,6 @@ public class DependencyUtils {
      * Adapted from https://github.com/VelocityPowered/Velocity.
      * @throws IllegalStateException Iff circular dependency.
      */
-    @SuppressWarnings("UnstableApiUsage")
     public static <T> List<T> determineOrder(Map<T, Set<T>> dependencyMap) throws IllegalStateException {
         HashGraph<T> dependencyGraph = new HashGraph<>();
         for (T node : dependencyMap.keySet()) {
@@ -40,7 +39,6 @@ public class DependencyUtils {
         return orderedList;
     }
 
-    @SuppressWarnings("UnstableApiUsage")
     private static <T> void visitNode(
             HashGraph<T> dependencyGraph,
             T node,
@@ -80,5 +78,4 @@ public class DependencyUtils {
         PERMANENT
     }
 }
-
 
