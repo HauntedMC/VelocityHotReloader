@@ -6,8 +6,6 @@ import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.frankheijden.minecraftreflection.MinecraftReflection;
-import dev.frankheijden.minecraftreflection.Reflection;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -20,24 +18,22 @@ import nl.hauntedmc.velocityhotreloader.VHR;
 
 public class RVelocityCommandManager {
 
-    private static final MinecraftReflection reflection = MinecraftReflection
-            .of("com.velocitypowered.proxy.command.VelocityCommandManager");
-
     private RVelocityCommandManager() {}
 
     public static CommandDispatcher<CommandSource> getDispatcher(CommandManager manager) {
-        return reflection.get(manager, "dispatcher");
+        return Reflect.getFieldValue(manager, "dispatcher");
     }
 
     /**
      * Proxies the registrars.
      */
-    @SuppressWarnings({"rawtypes", "deprecation"})
+    @SuppressWarnings("deprecation")
     public static void proxyRegistrars(
             ProxyServer proxy,
             ClassLoader loader,
             BiConsumer<PluginContainer, CommandMeta> registrationConsumer
     ) {
+        CommandManager commandManager = proxy.getCommandManager();
         List<Object> proxiedRegistrars = new ArrayList<>();
 
         Class<?> commandRegistrarClass;
@@ -48,10 +44,11 @@ public class RVelocityCommandManager {
             return;
         }
 
-        for (Object registrar : (List) reflection.get(proxy.getCommandManager(), "registrars")) {
+        List<Object> registrars = Reflect.getFieldValue(commandManager, "registrars");
+        for (Object registrar : registrars) {
             proxiedRegistrars.add(Proxy.newProxyInstance(
                     loader,
-                    new Class[]{ commandRegistrarClass },
+                    new Class<?>[]{ commandRegistrarClass },
                     new CommandRegistrarInvocationHandler(
                             proxy,
                             registrar,
@@ -60,10 +57,10 @@ public class RVelocityCommandManager {
             ));
         }
 
-        Field registrarsField = Reflection.getAccessibleField(reflection.getClazz(), "registrars");
+        Field registrarsField = Reflect.getAccessibleField(commandManager.getClass(), "registrars");
         ReflectionUtils.doPrivilegedWithUnsafe(unsafe -> {
             long offset = unsafe.objectFieldOffset(registrarsField);
-            unsafe.putObject(proxy.getCommandManager(), offset, proxiedRegistrars);
+            unsafe.putObject(commandManager, offset, proxiedRegistrars);
         });
     }
 
@@ -74,7 +71,7 @@ public class RVelocityCommandManager {
         private final BiConsumer<PluginContainer, CommandMeta> registrationConsumer;
 
         /**
-         * Constructs  a new {@link CommandRegistrarInvocationHandler}.
+         * Constructs a new {@link CommandRegistrarInvocationHandler}.
          */
         public CommandRegistrarInvocationHandler(
                 ProxyServer proxy,
@@ -89,8 +86,8 @@ public class RVelocityCommandManager {
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             Object obj = method.invoke(commandRegistrar, args);
-            if (method.getName().equals("register")) {
-                handleRegisterMethod((CommandMeta) args[0]);
+            if ("register".equals(method.getName()) && args != null && args.length > 0 && args[0] instanceof CommandMeta commandMeta) {
+                handleRegisterMethod(commandMeta);
             }
             return obj;
         }

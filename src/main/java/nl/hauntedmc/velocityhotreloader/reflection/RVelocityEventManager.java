@@ -4,23 +4,22 @@ import com.google.common.collect.Multimap;
 import com.velocitypowered.api.event.EventHandler;
 import com.velocitypowered.api.event.EventManager;
 import com.velocitypowered.api.plugin.PluginContainer;
-import dev.frankheijden.minecraftreflection.ClassObject;
-import dev.frankheijden.minecraftreflection.MinecraftReflection;
 import java.lang.reflect.Array;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 public class RVelocityEventManager {
 
-    private static final MinecraftReflection reflection = MinecraftReflection
-            .of("com.velocitypowered.proxy.event.VelocityEventManager");
+    private static final Class<?> HANDLER_REGISTRATION_CLASS =
+            Reflect.classForName("com.velocitypowered.proxy.event.VelocityEventManager$HandlerRegistration");
 
     private RVelocityEventManager() {}
 
     @SuppressWarnings("unchecked")
     public static Multimap<Class<?>, Object> getHandlersByType(EventManager manager) {
-        return (Multimap<Class<?>, Object>) reflection.get(manager, "handlersByType");
+        return Reflect.getFieldValue(manager, "handlersByType");
     }
 
     /**
@@ -31,9 +30,10 @@ public class RVelocityEventManager {
             List<Object> plugins,
             Class<?> eventClass
     ) {
+        Comparator<Object> comparator = Reflect.getFieldValue(manager, "handlerComparator");
         return getHandlersByType(manager).get(eventClass).stream()
                 .filter(r -> plugins.contains(RHandlerRegistration.getPlugin(r).getInstance().orElse(null)))
-                .sorted(reflection.get(manager, "handlerComparator"))
+                .sorted(comparator)
                 .collect(Collectors.toList());
     }
 
@@ -41,11 +41,12 @@ public class RVelocityEventManager {
      * Registers the listener for a given plugin.
      */
     public static void registerInternally(EventManager manager, PluginContainer container, Object listener) {
-        reflection.invoke(
+        Reflect.invoke(
                 manager,
                 "registerInternally",
-                ClassObject.of(PluginContainer.class, container),
-                ClassObject.of(Object.class, listener)
+                new Class<?>[]{PluginContainer.class, Object.class},
+                container,
+                listener
         );
     }
 
@@ -60,17 +61,24 @@ public class RVelocityEventManager {
         List<Object> registrations = getRegistrationsByPlugins(manager, pluginInstances, event.getClass());
         CompletableFuture<E> future = new CompletableFuture<>();
 
-        Object registrationsEmptyArray = Array.newInstance(RHandlerRegistration.reflection.getClazz(), 0);
+        Object registrationsEmptyArray = Array.newInstance(HANDLER_REGISTRATION_CLASS, 0);
         Class<?> registrationsArrayClass = registrationsEmptyArray.getClass();
 
-        reflection.invoke(
+        Reflect.invoke(
                 manager,
                 "fire",
-                ClassObject.of(CompletableFuture.class, future),
-                ClassObject.of(Object.class, event),
-                ClassObject.of(int.class, 0),
-                ClassObject.of(boolean.class, true),
-                ClassObject.of(registrationsArrayClass, registrations.toArray((Object[]) registrationsEmptyArray))
+                new Class<?>[]{
+                        CompletableFuture.class,
+                        Object.class,
+                        int.class,
+                        boolean.class,
+                        registrationsArrayClass
+                },
+                future,
+                event,
+                0,
+                true,
+                registrations.toArray((Object[]) registrationsEmptyArray)
         );
 
         return future;
@@ -78,17 +86,14 @@ public class RVelocityEventManager {
 
     public static class RHandlerRegistration {
 
-        private static final MinecraftReflection reflection = MinecraftReflection
-                .of("com.velocitypowered.proxy.event.VelocityEventManager$HandlerRegistration");
-
         private RHandlerRegistration() {}
 
         public static PluginContainer getPlugin(Object registration) {
-            return reflection.get(registration, "plugin");
+            return Reflect.getFieldValue(registration, "plugin");
         }
 
         public static EventHandler<Object> getEventHandler(Object registration) {
-            return reflection.get(registration, "handler");
+            return Reflect.getFieldValue(registration, "handler");
         }
     }
 }

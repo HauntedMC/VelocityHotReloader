@@ -4,15 +4,12 @@ import com.google.inject.Module;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.PluginDescription;
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.frankheijden.minecraftreflection.ClassObject;
-import dev.frankheijden.minecraftreflection.MinecraftReflection;
-import java.lang.reflect.Array;
 import java.nio.file.Path;
 
 public class RJavaPluginLoader {
 
-    private static final MinecraftReflection reflection = MinecraftReflection
-            .of("com.velocitypowered.proxy.plugin.loader.java.JavaPluginLoader");
+    private static final Class<?> JAVA_PLUGIN_LOADER_CLASS =
+            Reflect.classForName("com.velocitypowered.proxy.plugin.loader.java.JavaPluginLoader");
 
     private RJavaPluginLoader() {}
 
@@ -20,9 +17,11 @@ public class RJavaPluginLoader {
      * Constructs a new instance of a JavaPluginLoader.
      */
     public static Object newInstance(ProxyServer proxy, Path baseDirectory) {
-        return reflection.newInstance(
-                ClassObject.of(ProxyServer.class, proxy),
-                ClassObject.of(Path.class, baseDirectory)
+        return Reflect.newInstance(
+                JAVA_PLUGIN_LOADER_CLASS,
+                new Class<?>[]{ProxyServer.class, Path.class},
+                proxy,
+                baseDirectory
         );
     }
 
@@ -30,43 +29,54 @@ public class RJavaPluginLoader {
      * Loads a candidate description from the given source.
      */
     public static PluginDescription loadPluginDescription(Object javaPluginLoader, Path source) {
-        String fieldName = "loadCandidate";
+        String methodName = "loadCandidate";
         try {
-            reflection.getClazz().getDeclaredMethod(fieldName, Path.class);
-        } catch (NoSuchMethodException ex) {
-            fieldName = "loadPluginDescription";
+            Reflect.getAccessibleMethod(JAVA_PLUGIN_LOADER_CLASS, methodName, Path.class);
+        } catch (IllegalStateException ex) {
+            methodName = "loadPluginDescription";
         }
 
-        return reflection.invoke(javaPluginLoader, fieldName, ClassObject.of(Path.class, source));
+        return Reflect.invoke(javaPluginLoader, methodName, new Class<?>[]{Path.class}, source);
     }
 
     /**
      * Loads the plugin from their candidate PluginDescription.
      */
     public static PluginDescription loadPlugin(Object javaPluginLoader, PluginDescription candidate) {
-        String fieldName = "createPluginFromCandidate";
+        String methodName = "createPluginFromCandidate";
         try {
-            reflection.getClazz().getDeclaredMethod(fieldName, PluginDescription.class);
-        } catch (NoSuchMethodException ex) {
-            fieldName = "loadPlugin";
+            Reflect.getAccessibleMethod(JAVA_PLUGIN_LOADER_CLASS, methodName, PluginDescription.class);
+        } catch (IllegalStateException ex) {
+            methodName = "loadPlugin";
         }
 
-        return reflection.invoke(javaPluginLoader, fieldName, ClassObject.of(PluginDescription.class, candidate));
+        return Reflect.invoke(
+                javaPluginLoader,
+                methodName,
+                new Class<?>[]{PluginDescription.class},
+                candidate
+        );
     }
 
     public static Module createModule(Object javaPluginLoader, PluginContainer container) {
-        return reflection.invoke(javaPluginLoader, "createModule", ClassObject.of(PluginContainer.class, container));
+        return Reflect.invoke(
+                javaPluginLoader,
+                "createModule",
+                new Class<?>[]{PluginContainer.class},
+                container
+        );
     }
 
     /**
      * Creates the plugin.
      */
     public static void createPlugin(Object javaPluginLoader, PluginContainer container, Module... modules) {
-        reflection.invoke(
+        Reflect.invoke(
                 javaPluginLoader,
                 "createPlugin",
-                ClassObject.of(PluginContainer.class, container),
-                ClassObject.of(Array.newInstance(Module.class, 0).getClass(), modules)
+                new Class<?>[]{PluginContainer.class, Module[].class},
+                container,
+                modules
         );
     }
 }

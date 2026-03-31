@@ -39,7 +39,6 @@ dependencies {
         exclude("net.kyori", "adventure-api")
     }
     testImplementation("net.kyori:adventure-text-serializer-plain:${VersionConstants.adventureVersion}")
-    implementation("com.github.FrankHeijden:MinecraftReflection:1.0.0")
     implementation("com.google.code.gson:gson:2.8.6")
     compileOnly("com.mojang:brigadier:1.0.18")
     compileOnly("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
@@ -92,7 +91,6 @@ tasks.withType<ShadowJar> {
     exclude("org/checkerframework/**")
     exclude("plugin.yml")
     relocate("com.google.gson", "${dependencyDir}.gson")
-    relocate("dev.frankheijden.minecraftreflection", "${dependencyDir}.minecraftreflection")
     relocate("cloud.commandframework", "${dependencyDir}.cloud")
     relocate("io.leangen.geantyref", "${dependencyDir}.typetoken")
     relocate("net.kyori.adventure.text.minimessage", "${dependencyDir}.adventure.text.minimessage")
