@@ -2,16 +2,16 @@ package nl.hauntedmc.velocityhotreloader.config;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 
 public abstract class VHRResource {
 
-    protected final VHR plugin;
+    protected final VelocityHotReloaded plugin;
     protected final VHRConfig config;
     protected final JsonConfig defaultConfig;
 
     protected VHRResource(
-            VHR plugin,
+            VelocityHotReloaded plugin,
             VHRConfig config,
             JsonConfig defaultConfig
     ) {
@@ -20,7 +20,7 @@ public abstract class VHRResource {
         this.defaultConfig = defaultConfig;
     }
 
-    protected VHRResource(VHR plugin, String resourceName) {
+    protected VHRResource(VelocityHotReloaded plugin, String resourceName) {
         this.plugin = plugin;
         this.defaultConfig = JsonConfig.load(plugin.getResourceProvider(), resourceName);
         this.config = VHRConfig.init(

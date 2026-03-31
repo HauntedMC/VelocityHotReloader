@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 
 public class RVelocityCommandManager {
 
@@ -116,7 +116,7 @@ public class RVelocityCommandManager {
                 return;
             }
 
-            VHR.getInstance().getSlf4jLogger().warn(
+            VelocityHotReloaded.getInstance().getSlf4jLogger().warn(
                     "Couldn't find the registering plugin for the following aliases: {}",
                     commandMeta.getAliases()
             );

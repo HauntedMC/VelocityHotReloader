@@ -7,18 +7,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import nl.hauntedmc.velocityhotreloader.entities.AbstractTask;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 
 /**
  * Tracks scheduled tasks so they can be cancelled individually or in bulk on shutdown/reload.
  */
 public class VelocityTaskManager {
 
-    private final VHR plugin;
+    private final VelocityHotReloaded plugin;
     private final List<ScheduledTask> serverTasks;
     private final Map<String, RunningTask> tasks;
 
-    public VelocityTaskManager(VHR plugin) {
+    public VelocityTaskManager(VelocityHotReloaded plugin) {
         this.plugin = plugin;
         this.serverTasks = new ArrayList<>();
         this.tasks = new HashMap<>();

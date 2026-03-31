@@ -3,7 +3,7 @@ package nl.hauntedmc.velocityhotreloader.entities.results;
 import nl.hauntedmc.velocityhotreloader.config.ConfigKey;
 import nl.hauntedmc.velocityhotreloader.config.MessageKey;
 import nl.hauntedmc.velocityhotreloader.entities.VHRAudience;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 
@@ -24,7 +24,7 @@ public enum WatchResult implements AbstractResult {
     }
 
     public void sendTo(VHRAudience<?> sender, TagResolver... tagResolvers) {
-        Component component = VHR.getInstance().getMessagesResource().get(key).toComponent(tagResolvers);
+        Component component = VelocityHotReloaded.getInstance().getMessagesResource().get(key).toComponent(tagResolvers);
         sender.sendMessage(component);
     }
 

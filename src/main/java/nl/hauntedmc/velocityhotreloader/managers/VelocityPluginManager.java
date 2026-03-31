@@ -40,7 +40,7 @@ import nl.hauntedmc.velocityhotreloader.entities.results.CloseablePluginResults;
 import nl.hauntedmc.velocityhotreloader.entities.results.PluginResults;
 import nl.hauntedmc.velocityhotreloader.entities.results.Result;
 import nl.hauntedmc.velocityhotreloader.utils.DependencyUtils;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 import nl.hauntedmc.velocityhotreloader.entities.VelocityPluginDescription;
 import nl.hauntedmc.velocityhotreloader.events.VelocityPluginDisableEvent;
 import nl.hauntedmc.velocityhotreloader.events.VelocityPluginEnableEvent;
@@ -76,7 +76,7 @@ public class VelocityPluginManager {
     }
 
     public File getPluginsFolder() {
-        return VHR.getInstance().getDataFolder().getParentFile();
+        return VelocityHotReloaded.getInstance().getDataFolder().getParentFile();
     }
 
     public List<PluginContainer> getPlugins() {

@@ -29,7 +29,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 import nl.hauntedmc.velocityhotreloader.config.MessageKey;
 import nl.hauntedmc.velocityhotreloader.config.MessagesResource;
 import nl.hauntedmc.velocityhotreloader.entities.VelocityAudience;
@@ -64,9 +64,9 @@ public class CommandVHR {
     private static final Set<String> FORCE_FLAGS = Set.of("--force", "-f");
     private static final Set<String> VERSION_FLAGS = Set.of("--version", "-v");
 
-    private final VHR plugin;
+    private final VelocityHotReloaded plugin;
 
-    public CommandVHR(VHR plugin) {
+    public CommandVHR(VelocityHotReloaded plugin) {
         this.plugin = plugin;
     }
 
@@ -465,7 +465,7 @@ public class CommandVHR {
             Function<Consumer<ListComponentBuilder<String>>, Component> listBuilderFunction,
             String commandName
     ) {
-        VHR proxyPlugin = VHR.getInstance();
+        VelocityHotReloaded proxyPlugin = VelocityHotReloaded.getInstance();
         com.velocitypowered.api.command.CommandManager proxyCommandManager = proxyPlugin.getProxy().getCommandManager();
         CommandDispatcher<CommandSource> dispatcher = RVelocityCommandManager.getDispatcher(proxyCommandManager);
 

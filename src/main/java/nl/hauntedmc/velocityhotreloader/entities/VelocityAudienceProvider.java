@@ -2,18 +2,18 @@ package nl.hauntedmc.velocityhotreloader.entities;
 
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 import net.kyori.adventure.text.Component;
 
 public class VelocityAudienceProvider {
 
-    private final VHR plugin;
+    private final VelocityHotReloaded plugin;
     private final VelocityAudience consoleServerAudience;
 
     /**
      * Constructs a new VelocityAudienceProvider.
      */
-    public VelocityAudienceProvider(VHR plugin) {
+    public VelocityAudienceProvider(VelocityHotReloaded plugin) {
         this.plugin = plugin;
         this.consoleServerAudience = new VelocityAudience(
                 plugin.getProxy().getConsoleCommandSource(),

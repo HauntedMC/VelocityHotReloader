@@ -46,9 +46,9 @@ import org.slf4j.Logger;
         url = "https://www.hauntedmc.nl",
         authors = "remymine"
 )
-public class VHR {
+public class VelocityHotReloaded {
 
-    private static VHR instance;
+    private static VelocityHotReloaded instance;
     private static final String PLUGIN_COMMANDS_CACHE = ".pluginCommandsCache.json";
     private static final int STARTUP_UNLOAD_DELAY_TICKS = 20;
     private static final List<String> STARTUP_UNLOAD_PLUGIN_IDS = List.of();
@@ -68,7 +68,7 @@ public class VHR {
     private boolean commandsRegistered;
 
     @Inject
-    public VHR(
+    public VelocityHotReloaded(
             ProxyServer proxy,
             Logger slf4jLogger,
             @DataDirectory Path dataDirectory,
@@ -115,7 +115,7 @@ public class VHR {
         }
     }
 
-    public static VHR getInstance() {
+    public static VelocityHotReloaded getInstance() {
         return instance;
     }
 

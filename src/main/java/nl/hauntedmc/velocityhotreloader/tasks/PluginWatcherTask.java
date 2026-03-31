@@ -10,7 +10,7 @@ import nl.hauntedmc.velocityhotreloader.entities.results.PluginResult;
 import nl.hauntedmc.velocityhotreloader.entities.results.PluginResults;
 import nl.hauntedmc.velocityhotreloader.entities.results.WatchResult;
 import nl.hauntedmc.velocityhotreloader.utils.FileUtils;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 import nl.hauntedmc.velocityhotreloader.entities.VelocityPluginDescription;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginManager;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
@@ -41,7 +41,7 @@ public class PluginWatcherTask extends AbstractTask {
         StandardWatchEventKinds.ENTRY_DELETE
     };
 
-    private final VHR plugin;
+    private final VelocityHotReloaded plugin;
     private final VHRAudience<?> sender;
     private final Map<String, WatchEntry> fileNameToWatchEntryMap;
     private final Map<String, WatchEntry> pluginIdToWatchEntryMap;
@@ -53,7 +53,7 @@ public class PluginWatcherTask extends AbstractTask {
     /**
      * Constructs a new PluginWatcherTask for the specified plugin.
      */
-    public PluginWatcherTask(VHR plugin, VHRAudience<?> sender, List<PluginContainer> plugins) {
+    public PluginWatcherTask(VelocityHotReloaded plugin, VHRAudience<?> sender, List<PluginContainer> plugins) {
         this.plugin = plugin;
         this.sender = sender;
         this.fileNameToWatchEntryMap = new HashMap<>();

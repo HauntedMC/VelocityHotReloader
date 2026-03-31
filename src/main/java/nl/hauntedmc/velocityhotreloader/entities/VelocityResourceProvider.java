@@ -9,13 +9,13 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import nl.hauntedmc.velocityhotreloader.config.VHRConfig;
 import nl.hauntedmc.velocityhotreloader.providers.ResourceProvider;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 
 public class VelocityResourceProvider implements ResourceProvider {
 
-    private final VHR plugin;
+    private final VelocityHotReloaded plugin;
 
-    public VelocityResourceProvider(VHR plugin) {
+    public VelocityResourceProvider(VelocityHotReloaded plugin) {
         this.plugin = plugin;
     }
 

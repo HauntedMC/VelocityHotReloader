@@ -10,15 +10,15 @@ import nl.hauntedmc.velocityhotreloader.entities.VHRAudience;
 import nl.hauntedmc.velocityhotreloader.entities.results.PluginWatchResults;
 import nl.hauntedmc.velocityhotreloader.entities.results.WatchResult;
 import nl.hauntedmc.velocityhotreloader.tasks.PluginWatcherTask;
-import nl.hauntedmc.velocityhotreloader.VHR;
+import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
 public class WatchManager {
 
-    private final VHR plugin;
+    private final VelocityHotReloaded plugin;
     private final Map<String, WatchTask> watchTasks;
 
-    public WatchManager(VHR plugin) {
+    public WatchManager(VelocityHotReloaded plugin) {
         this.plugin = plugin;
         this.watchTasks = new HashMap<>();
     }
