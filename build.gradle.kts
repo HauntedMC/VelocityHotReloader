@@ -8,7 +8,7 @@ plugins {
 
 group = "nl.hauntedmc.velocityhotreloader"
 val dependencyDir = "${group}.velocity.dependencies"
-version = "1.1.0"
+version = "1.2.0"
 
 val javaVersion = 21
 
