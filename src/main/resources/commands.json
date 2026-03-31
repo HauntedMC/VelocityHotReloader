@@ -1,0 +1,163 @@
+{
+  "config-version": 1,
+  "commands": {
+    "plugins": {
+      "main": "vplugins",
+      "aliases": [
+        "vpl"
+      ],
+      "permission": "velocityhotreloader.plugins",
+      "description": "Geeft de ingeschakelde plugins weer.",
+      "display-in-help": true,
+      "flags": {
+        "version": {
+          "main": "version",
+          "aliases": [
+            "v"
+          ],
+          "permission": "velocityhotreloader.plugins.version",
+          "description": "Geeft de pluginversies weer.",
+          "display-in-help": true
+        }
+      }
+    },
+    "velocityhotreloader": {
+      "main": "velocityhotreloader",
+      "aliases": [
+        "vhr"
+      ],
+      "permission": "velocityhotreloader.help",
+      "display-in-help": false,
+      "subcommands": {
+        "help": {
+          "main": "help",
+          "aliases": [],
+          "permission": "velocityhotreloader.help",
+          "description": "Geeft de hulppagina weer.",
+          "display-in-help": true
+        },
+        "reload": {
+          "main": "reload",
+          "aliases": [],
+          "permission": "velocityhotreloader.reload",
+          "description": "Herladen van de VHR-plugin.",
+          "display-in-help": true
+        },
+        "restart": {
+          "main": "restart",
+          "aliases": [],
+          "permission": "velocityhotreloader.restart",
+          "description": "Herstart de VHR-plugin.",
+          "display-in-help": true,
+          "flags": {
+            "force": {
+              "main": "force",
+              "aliases": [
+                "f"
+              ],
+              "permission": "velocityhotreloader.restart",
+              "description": "Geforceerd herstarten van de VHR-plugin.",
+              "display-in-help": false
+            }
+          }
+        },
+        "loadplugin": {
+          "main": "loadplugin",
+          "aliases": [
+            "lp"
+          ],
+          "permission": "velocityhotreloader.loadplugin",
+          "description": "Laadt de opgegeven jar-bestanden.",
+          "display-in-help": true
+        },
+        "unloadplugin": {
+          "main": "unloadplugin",
+          "aliases": [
+            "up"
+          ],
+          "permission": "velocityhotreloader.unloadplugin",
+          "description": "Schakelt de opgegeven plugin(s) uit en laadt ze uit.",
+          "display-in-help": true,
+          "flags": {
+            "force": {
+              "main": "force",
+              "aliases": [
+                "f"
+              ],
+              "permission": "velocityhotreloader.unloadplugin",
+              "description": "Geforceerd uitschakelen en uitladen van de opgegeven plugin(s).",
+              "display-in-help": false
+            }
+          }
+        },
+        "reloadplugin": {
+          "main": "reloadplugin",
+          "aliases": [
+            "rp"
+          ],
+          "permission": "velocityhotreloader.reloadplugin",
+          "description": "Herladen van de opgegeven plugin(s).",
+          "display-in-help": true,
+          "flags": {
+            "force": {
+              "main": "force",
+              "aliases": [
+                "f"
+              ],
+              "permission": "velocityhotreloader.reloadplugin",
+              "description": "Geforceerd herladen van de opgegeven plugin(s).",
+              "display-in-help": false
+            }
+          }
+        },
+        "watchplugin": {
+          "main": "watchplugin",
+          "aliases": [
+            "wp"
+          ],
+          "permission": "velocityhotreloader.watchplugin",
+          "description": "Volgt de opgegeven plugin(s) op wijzigingen.",
+          "display-in-help": true,
+          "flags": {
+            "force": {
+              "main": "force",
+              "aliases": [
+                "f"
+              ],
+              "permission": "velocityhotreloader.watchplugin",
+              "description": "Geforceerd volgen van de opgegeven plugin(s) op wijzigingen.",
+              "display-in-help": false
+            }
+          }
+        },
+        "unwatchplugin": {
+          "main": "unwatchplugin",
+          "aliases": [
+            "uwp"
+          ],
+          "permission": "velocityhotreloader.watchplugin",
+          "description": "Stopt met het volgen van de opgegeven plugin voor wijzigingen.",
+          "display-in-help": true
+        },
+        "plugininfo": {
+          "main": "plugininfo",
+          "aliases": [
+            "pi"
+          ],
+          "permission": "velocityhotreloader.plugininfo",
+          "description": "Toont informatie over de opgegeven plugin.",
+          "display-in-help": true
+        },
+        "commandinfo": {
+          "main": "commandinfo",
+          "aliases": [
+            "ci"
+          ],
+          "permission": "velocityhotreloader.commandinfo",
+          "description": "Toont informatie over het opgegeven commando.",
+          "display-in-help": true
+        }
+      }
+    }
+  }
+}

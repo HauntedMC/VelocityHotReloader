@@ -4,79 +4,48 @@ plugins {
     `java-library`
     `maven-publish`
     id("io.github.goooler.shadow") version "8.1.7"
+    id("net.kyori.blossom") version "1.3.0"
 }
 
-group = "nl.hauntedmc.velocityhotreloaded"
-val dependencyDir = "${group}.dependencies"
+group = "nl.hauntedmc.velocityhotreloader"
+val dependencyDir = "${group}.velocity.dependencies"
 version = "1.0.2"
 
 val javaVersion = 21
 
-java.toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersion))
-
-subprojects {
-    apply(plugin = "java")
-    apply(plugin = "io.github.goooler.shadow")
-
+java {
     java.toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersion))
+}
 
-    repositories {
-        mavenCentral()
-        maven("https://jitpack.io")
-        maven("https://oss.sonatype.org/content/repositories/snapshots")
-        maven("https://papermc.io/repo/repository/maven-public/")
-        maven("https://libraries.minecraft.net")
-    }
-
-    dependencies {
-        implementation("org.incendo:cloud-core:${VersionConstants.cloudVersion}")
-        implementation("org.incendo:cloud-brigadier:${VersionConstants.cloudMinecraftVersion}")
-        compileOnly("net.kyori:adventure-text-minimessage:${VersionConstants.adventureVersion}")
-        testImplementation("net.kyori:adventure-text-serializer-plain:${VersionConstants.adventureVersion}")
-        implementation("com.github.FrankHeijden:MinecraftReflection:1.0.0")
-        implementation("com.google.code.gson:gson:2.8.6")
-        compileOnly("com.mojang:brigadier:1.0.18")
-    }
-
-    tasks {
-        build {
-            dependsOn("shadowJar")
-        }
-
-        compileJava {
-            options.release.set(javaVersion)
-            options.encoding = Charsets.UTF_8.name()
-            options.isDeprecation = true
-        }
-
-        javadoc {
-            options.encoding = Charsets.UTF_8.name()
-        }
-
-        processResources {
-            filteringCharset = Charsets.UTF_8.name()
-        }
-    }
-
-    tasks.withType<ShadowJar> {
-        exclude("com/mojang/**")
-        exclude("javax/annotation/**")
-        exclude("org/checkerframework/**")
-        relocate("com.google.gson", "${dependencyDir}.gson")
-        relocate("dev.frankheijden.minecraftreflection", "${dependencyDir}.minecraftreflection")
-        relocate("cloud.commandframework", "${dependencyDir}.cloud")
-        relocate("io.leangen.geantyref", "${dependencyDir}.typetoken")
-        relocate("net.kyori.adventure.text.minimessage", "${dependencyDir}.adventure.text.minimessage")
-    }
+base {
+    archivesName.set(rootProject.name)
 }
 
 repositories {
     mavenCentral()
+    maven("https://jitpack.io")
+    maven("https://oss.sonatype.org/content/repositories/snapshots")
+    maven("https://repo.papermc.io/repository/maven-public/") {
+        name = "papermc"
+    }
+    maven("https://libraries.minecraft.net")
 }
 
 dependencies {
-    implementation(project(":Common", "shadow"))
-    implementation(project(":Velocity", "shadow"))
+    implementation("org.incendo:cloud-core:${VersionConstants.cloudVersion}")
+    implementation("org.incendo:cloud-brigadier:${VersionConstants.cloudMinecraftVersion}")
+    implementation("org.incendo:cloud-velocity:${VersionConstants.cloudMinecraftVersion}")
+    implementation("net.kyori:adventure-text-minimessage:4.26.1") {
+        exclude("net.kyori", "adventure-api")
+    }
+    testImplementation("net.kyori:adventure-text-serializer-plain:${VersionConstants.adventureVersion}")
+    implementation("com.github.FrankHeijden:MinecraftReflection:1.0.0")
+    implementation("com.google.code.gson:gson:2.8.6")
+    compileOnly("com.mojang:brigadier:1.0.18")
+    compileOnly("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-brigadier:1.0.0-SNAPSHOT")
+    compileOnly("com.electronwill.night-config:toml:3.6.3")
+    annotationProcessor("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
     implementation("net.kyori:adventure-text-serializer-gson:${VersionConstants.adventureVersion}") {
         exclude("net.kyori", "adventure-api")
         exclude("com.google.code.gson", "gson")
@@ -84,36 +53,53 @@ dependencies {
 }
 
 tasks {
+    blossom {
+        replaceToken("{version}", version, "src/main/java/nl/hauntedmc/velocityhotreloader/common/VHRApp.java")
+        replaceToken("{version}", version, "src/main/java/nl/hauntedmc/velocityhotreloader/velocity/VHR.java")
+    }
+
     clean {
         dependsOn("cleanJars")
     }
 
     build {
-        dependsOn("shadowJar", "copyJars")
+        dependsOn("shadowJar")
+    }
+
+    compileJava {
+        options.release.set(javaVersion)
+        options.encoding = Charsets.UTF_8.name()
+        options.isDeprecation = true
+    }
+
+    javadoc {
+        options.encoding = Charsets.UTF_8.name()
+    }
+
+    processResources {
+        filteringCharset = Charsets.UTF_8.name()
+    }
+
+    jar {
+        enabled = false
     }
 }
 
 tasks.withType<ShadowJar> {
+    archiveClassifier.set("")
+    destinationDirectory.set(file("jars"))
+    exclude("com/mojang/**")
+    exclude("javax/annotation/**")
+    exclude("org/checkerframework/**")
+    exclude("plugin.yml")
+    relocate("com.google.gson", "${dependencyDir}.gson")
+    relocate("dev.frankheijden.minecraftreflection", "${dependencyDir}.minecraftreflection")
+    relocate("cloud.commandframework", "${dependencyDir}.cloud")
+    relocate("io.leangen.geantyref", "${dependencyDir}.typetoken")
+    relocate("net.kyori.adventure.text.minimessage", "${dependencyDir}.adventure.text.minimessage")
     relocate("net.kyori.adventure.text.serializer.gson", "${dependencyDir}.impl.adventure.text.serializer.gson")
-}
-
-fun outputTasks(): List<Task> {
-    return listOf(
-        ":Velocity:shadowJar",
-    ).map { tasks.findByPath(it)!! }
 }
 
 tasks.register("cleanJars") {
     delete(file("jars"))
 }
-
-tasks.register<Copy>("copyJars") {
-    outputTasks().forEach {
-        from(it) {
-            duplicatesStrategy = DuplicatesStrategy.INCLUDE
-        }
-    }
-    into(file("jars"))
-    rename("(.*)-all.jar", "$1.jar")
-}
-
