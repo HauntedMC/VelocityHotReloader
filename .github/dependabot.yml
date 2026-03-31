@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # Gradle configuration
+  - package-ecosystem: "gradle"
+    # Look for build.gradle, build.gradle.kts, or gradle/libs.versions.toml in the root
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "java"
+  # GitHub Actions configuration (Kept exactly as you had it)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
