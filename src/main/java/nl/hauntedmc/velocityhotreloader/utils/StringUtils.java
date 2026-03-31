@@ -8,7 +8,6 @@ public class StringUtils {
 
     /**
      * Converts a bytes array to hex.
-     * via https://stackoverflow.com/a/9855338/11239174
      */
     public static String bytesToHex(byte[] bytes) {
         byte[] hexChars = new byte[bytes.length * 2];

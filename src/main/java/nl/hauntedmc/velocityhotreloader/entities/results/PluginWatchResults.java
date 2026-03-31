@@ -7,6 +7,7 @@ import nl.hauntedmc.velocityhotreloader.config.MessagesResource;
 import nl.hauntedmc.velocityhotreloader.entities.VHRAudience;
 import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import org.jspecify.annotations.NonNull;
 
 public class PluginWatchResults implements Iterable<PluginWatchResult> {
 
@@ -32,12 +33,12 @@ public class PluginWatchResults implements Iterable<PluginWatchResult> {
         MessagesResource messages = VelocityHotReloaded.getInstance().getMessagesResource();
 
         for (PluginWatchResult watchResult : watchResults) {
-            sender.sendMessage(messages.get(watchResult.getKey()).toComponent(watchResult.getPlaceholders()));
+            sender.sendMessage(messages.get(watchResult.getKey()).toComponent(watchResult.placeholders()));
         }
     }
 
     @Override
-    public Iterator<PluginWatchResult> iterator() {
+    public @NonNull Iterator<PluginWatchResult> iterator() {
         return watchResults.iterator();
     }
 }

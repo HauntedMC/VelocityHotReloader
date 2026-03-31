@@ -1,13 +1,6 @@
 package nl.hauntedmc.velocityhotreloader.utils;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -16,31 +9,6 @@ import java.security.NoSuchAlgorithmException;
 public class FileUtils {
 
     private FileUtils() {}
-
-    /**
-     * Parses an InputStream into a JsonElement.
-     */
-    public static JsonElement parseJson(InputStream in) throws IOException {
-        if (in == null) return null;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            return JsonParser.parseReader(reader);
-        }
-    }
-
-    /**
-     * Saves an InputStream to a file.
-     */
-    public static boolean saveResource(InputStream in, File target) throws IOException {
-        if (target.exists()) return false;
-        if (in == null) {
-            throw new IllegalArgumentException("Resource input stream cannot be null");
-        }
-
-        try (InputStream input = in) {
-            Files.copy(input, target.toPath());
-        }
-        return true;
-    }
 
     /**
      * Get the Hash of a file at given path.

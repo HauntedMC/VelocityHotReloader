@@ -72,14 +72,7 @@ public class WatchManager {
         return new PluginWatchResults().add(WatchResult.NOT_WATCHING, Placeholder.unparsed("plugin", associatedPluginId));
     }
 
-    private static final class WatchTask {
+    private record WatchTask(UUID key, List<String> pluginIds) {
 
-        private final UUID key;
-        private final List<String> pluginIds;
-
-        private WatchTask(UUID key, List<String> pluginIds) {
-            this.key = key;
-            this.pluginIds = pluginIds;
-        }
     }
 }

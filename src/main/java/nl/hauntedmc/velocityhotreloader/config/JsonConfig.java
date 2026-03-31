@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.reflect.TypeToken;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,7 +28,10 @@ public class JsonConfig implements VHRConfig {
     private File file = null;
 
     public JsonConfig(File file) throws IOException {
-        this.config = gson.fromJson(Files.newBufferedReader(file.toPath()), JsonObject.class);
+        try (BufferedReader reader = Files.newBufferedReader(file.toPath())) {
+            JsonObject loaded = gson.fromJson(reader, JsonObject.class);
+            this.config = loaded != null ? loaded : new JsonObject();
+        }
         this.file = file;
     }
 
@@ -44,26 +48,31 @@ public class JsonConfig implements VHRConfig {
             throw new IllegalStateException("Unable to find bundled resource '" + resourceName + ".json'");
         }
 
-        JsonConfig generalConfig = new JsonConfig(JsonConfig.gson.fromJson(
-                new InputStreamReader(baseStream, StandardCharsets.UTF_8),
-                JsonObject.class
-        ));
+        JsonConfig generalConfig;
+        try (InputStream stream = baseStream;
+             InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+            JsonObject loaded = JsonConfig.gson.fromJson(reader, JsonObject.class);
+            generalConfig = new JsonConfig(loaded != null ? loaded : new JsonObject());
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unable to load bundled resource '" + resourceName + ".json'", ex);
+        }
 
         String velocityResource = "velocity-" + resourceName + ".json";
         InputStream velocityStream = provider.getRawResource(velocityResource);
         if (velocityStream != null) {
-            JsonConfig velocityConfig = new JsonConfig(JsonConfig.gson.fromJson(
-                    new InputStreamReader(velocityStream, StandardCharsets.UTF_8),
-                    JsonObject.class
-            ));
-            VHRConfig.addDefaults(velocityConfig, generalConfig);
+            try (InputStream stream = velocityStream;
+                 InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+                JsonObject loaded = JsonConfig.gson.fromJson(reader, JsonObject.class);
+                if (loaded != null) {
+                    JsonConfig velocityConfig = new JsonConfig(loaded);
+                    VHRConfig.addDefaults(velocityConfig, generalConfig);
+                }
+            } catch (IOException ex) {
+                throw new IllegalStateException("Unable to load bundled resource '" + velocityResource + "'", ex);
+            }
         }
 
         return generalConfig;
-    }
-
-    public JsonObject getConfig() {
-        return config;
     }
 
     /**
@@ -127,9 +136,8 @@ public class JsonConfig implements VHRConfig {
     @Override
     public List<String> getStringList(String path) {
         Object obj = get(path);
-        if (!(obj instanceof JsonArray)) throw new IllegalStateException("Not a JSON Array: " + obj);
+        if (!(obj instanceof JsonArray jsonArray)) throw new IllegalStateException("Not a JSON Array: " + obj);
 
-        JsonArray jsonArray = (JsonArray) obj;
         List<String> list = new ArrayList<>(jsonArray.size());
         for (JsonElement jsonElement : jsonArray) {
             list.add(jsonElement.getAsString());
@@ -208,9 +216,9 @@ public class JsonConfig implements VHRConfig {
 
     @Override
     public void save() throws IOException {
-        Files.write(
+        Files.writeString(
                 file.toPath(),
-                gson.toJson(config).getBytes(StandardCharsets.UTF_8),
+                gson.toJson(config),
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING
         );

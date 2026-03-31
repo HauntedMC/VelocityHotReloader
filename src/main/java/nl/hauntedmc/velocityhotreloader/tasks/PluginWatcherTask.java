@@ -158,7 +158,7 @@ public class PluginWatcherTask extends AbstractTask {
 
         // Debounce multiple rapid file system events into a single reload operation.
         task = plugin.getTaskManager().runTaskLater(() -> {
-            if (entry.hash.equals(previousHash) || previousTimestamp < entry.timestamp - 1000L) {
+            if (!entry.hash.equals(previousHash) || previousTimestamp < entry.timestamp - 1000L) {
                 send(WatchResult.CHANGE);
 
                 List<PluginContainer> plugins = new ArrayList<>(fileNameToWatchEntryMap.size());

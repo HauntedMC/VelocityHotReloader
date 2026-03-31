@@ -14,7 +14,6 @@ public class DependencyUtils {
 
     /**
      * Determines the topological order of a dependency map.
-     * Adapted from https://github.com/VelocityPowered/Velocity.
      * @throws IllegalStateException Iff circular dependency.
      */
     public static <T> List<T> determineOrder(Map<T, Set<T>> dependencyMap) throws IllegalStateException {

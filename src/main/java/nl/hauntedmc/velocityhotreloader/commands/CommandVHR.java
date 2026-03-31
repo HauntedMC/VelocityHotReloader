@@ -16,7 +16,6 @@ import com.velocitypowered.api.plugin.meta.PluginDependency;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -90,17 +89,17 @@ public class CommandVHR {
                     return 1;
                 });
 
-        addSubcommand(root, "help", List.of(), PERM_HELP, literal -> literal.executes(context -> {
+        addSubcommand(root, "help", PERM_HELP, literal -> literal.executes(context -> {
             handleHelpCommand(plugin.getChatProvider().get(context.getSource()));
             return 1;
         }));
 
-        addSubcommand(root, "reload", List.of(), PERM_RELOAD, literal -> literal.executes(context -> {
+        addSubcommand(root, "reload", PERM_RELOAD, literal -> literal.executes(context -> {
             handleReload(plugin.getChatProvider().get(context.getSource()));
             return 1;
         }));
 
-        addSubcommand(root, "restart", List.of(), PERM_RESTART, literal -> {
+        addSubcommand(root, "restart", PERM_RESTART, literal -> {
             literal.executes(context -> {
                 handleRestart(
                         plugin.getChatProvider().get(context.getSource()),
@@ -125,7 +124,7 @@ public class CommandVHR {
             return literal;
         });
 
-        addSubcommand(root, "loadplugin", List.of(), PERM_LOAD_PLUGIN, literal -> literal
+        addSubcommand(root, "loadplugin", PERM_LOAD_PLUGIN, literal -> literal
                 .then(RequiredArgumentBuilder.<CommandSource, String>argument("jarFiles", StringArgumentType.greedyString())
                         .suggests((context, builder) -> suggestJarFiles(builder))
                         .executes(context -> {
@@ -145,11 +144,11 @@ public class CommandVHR {
                             return 1;
                         })));
 
-        addPluginBatchSubcommand(root, "unloadplugin", List.of(), PERM_UNLOAD_PLUGIN, this::handleUnloadPlugin);
-        addPluginBatchSubcommand(root, "reloadplugin", List.of(), PERM_RELOAD_PLUGIN, this::handleReloadPlugin);
-        addPluginBatchSubcommand(root, "watchplugin", List.of(), PERM_WATCH_PLUGIN, this::handleWatchPlugin);
+        addPluginBatchSubcommand(root, "unloadplugin", PERM_UNLOAD_PLUGIN, this::handleUnloadPlugin);
+        addPluginBatchSubcommand(root, "reloadplugin", PERM_RELOAD_PLUGIN, this::handleReloadPlugin);
+        addPluginBatchSubcommand(root, "watchplugin", PERM_WATCH_PLUGIN, this::handleWatchPlugin);
 
-        addSubcommand(root, "unwatchplugin", List.of(), PERM_WATCH_PLUGIN, literal -> literal
+        addSubcommand(root, "unwatchplugin", PERM_WATCH_PLUGIN, literal -> literal
                 .then(RequiredArgumentBuilder.<CommandSource, String>argument("plugin", StringArgumentType.word())
                         .suggests((context, builder) -> suggestPlugins(builder))
                         .executes(context -> {
@@ -165,7 +164,7 @@ public class CommandVHR {
                             return 1;
                         })));
 
-        addSubcommand(root, "plugininfo", List.of(), PERM_PLUGIN_INFO, literal -> literal
+        addSubcommand(root, "plugininfo", PERM_PLUGIN_INFO, literal -> literal
                 .then(RequiredArgumentBuilder.<CommandSource, String>argument("plugin", StringArgumentType.word())
                         .suggests((context, builder) -> suggestPlugins(builder))
                         .executes(context -> {
@@ -181,7 +180,7 @@ public class CommandVHR {
                             return 1;
                         })));
 
-        addSubcommand(root, "commandinfo", List.of(), PERM_COMMAND_INFO, literal -> literal
+        addSubcommand(root, "commandinfo", PERM_COMMAND_INFO, literal -> literal
                 .then(RequiredArgumentBuilder.<CommandSource, String>argument("command", StringArgumentType.word())
                         .suggests((context, builder) -> suggestCommands(builder))
                         .executes(context -> {
@@ -191,7 +190,7 @@ public class CommandVHR {
                             return 1;
                         })));
 
-        addSubcommand(root, "plugins", List.of(), PERM_PLUGINS, literal -> {
+        addSubcommand(root, "plugins", PERM_PLUGINS, literal -> {
             literal.executes(context -> {
                 handlePlugins(plugin.getChatProvider().get(context.getSource()), false);
                 return 1;
@@ -214,11 +213,10 @@ public class CommandVHR {
     private void addPluginBatchSubcommand(
             LiteralArgumentBuilder<CommandSource> root,
             String name,
-            List<String> aliases,
             String permission,
             PluginBatchHandler handler
     ) {
-        addSubcommand(root, name, aliases, permission, literal -> literal
+        addSubcommand(root, name, permission, literal -> literal
                 .then(RequiredArgumentBuilder.<CommandSource, String>argument("plugins", StringArgumentType.greedyString())
                         .suggests((context, builder) -> suggestPluginsAndFlags(builder, FORCE_FLAGS))
                         .executes(context -> {
@@ -242,14 +240,10 @@ public class CommandVHR {
     private void addSubcommand(
             LiteralArgumentBuilder<CommandSource> root,
             String name,
-            List<String> aliases,
             String permission,
             Function<LiteralArgumentBuilder<CommandSource>, LiteralArgumentBuilder<CommandSource>> builderFunction
     ) {
         root.then(builderFunction.apply(baseLiteral(name, permission)));
-        for (String alias : aliases) {
-            root.then(builderFunction.apply(baseLiteral(alias, permission)));
-        }
     }
 
     private LiteralArgumentBuilder<CommandSource> baseLiteral(String name, String permission) {
@@ -478,7 +472,7 @@ public class CommandVHR {
         CommandMeta meta = null;
         try {
             meta = proxyCommandManager.getCommandMeta(commandName);
-        } catch (Throwable ignored) {
+        } catch (RuntimeException ignored) {
             //
         }
 

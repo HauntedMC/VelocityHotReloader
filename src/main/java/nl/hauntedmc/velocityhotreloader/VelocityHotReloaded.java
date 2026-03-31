@@ -2,7 +2,6 @@ package nl.hauntedmc.velocityhotreloader;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.mojang.brigadier.tree.CommandNode;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -12,14 +11,11 @@ import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 import nl.hauntedmc.velocityhotreloader.commands.CommandVHR;
 import nl.hauntedmc.velocityhotreloader.config.MessageKey;
 import nl.hauntedmc.velocityhotreloader.config.MessagesResource;
@@ -32,7 +28,6 @@ import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginCommandManager;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginManager;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityTaskManager;
 import nl.hauntedmc.velocityhotreloader.reflection.RVelocityCommandManager;
-import nl.hauntedmc.velocityhotreloader.utils.FileUtils;
 import org.slf4j.Logger;
 
 /**
@@ -123,10 +118,6 @@ public class VelocityHotReloaded {
         return proxy;
     }
 
-    public Path getDataDirectory() {
-        return dataDirectory;
-    }
-
     public PluginContainer getPlugin() {
         return pluginContainer;
     }
@@ -157,43 +148,6 @@ public class VelocityHotReloaded {
 
     public MessagesResource getMessagesResource() {
         return messagesResource;
-    }
-
-    public Collection<String> getCommands() {
-        return RVelocityCommandManager.getDispatcher(proxy.getCommandManager()).getRoot().getChildren().stream()
-                .map(CommandNode::getName)
-                .collect(Collectors.toSet());
-    }
-
-    public void createDataFolderIfNotExists() {
-        if (getDataFolder().exists()) {
-            return;
-        }
-
-        if (!getDataFolder().mkdirs() && !getDataFolder().exists()) {
-            throw new IllegalStateException("Unable to create plugin data folder at " + getDataFolder());
-        }
-    }
-
-    public File copyResourceIfNotExists(String targetName, String resource) {
-        createDataFolderIfNotExists();
-
-        File file = new File(getDataFolder(), targetName);
-        if (!file.exists()) {
-            slf4jLogger.info("'{}' not found, creating!", targetName);
-            try {
-                InputStream resourceStream = getResourceProvider().getResource(resource);
-                if (resourceStream == null) {
-                    slf4jLogger.error("Unable to find bundled resource '{}'", resource);
-                    return file;
-                }
-
-                FileUtils.saveResource(resourceStream, file);
-            } catch (IOException ex) {
-                slf4jLogger.error("Failed to copy resource '{}' to '{}'", resource, file, ex);
-            }
-        }
-        return file;
     }
 
     private void registerCommands() {

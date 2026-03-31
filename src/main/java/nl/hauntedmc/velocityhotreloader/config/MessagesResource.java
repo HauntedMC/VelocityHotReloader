@@ -46,7 +46,6 @@ public class MessagesResource extends VHRResource {
 
     public class Message {
 
-        private final PlaceholderConfigKey key;
         private final String messageString;
         private final Component component;
 
@@ -54,8 +53,12 @@ public class MessagesResource extends VHRResource {
          * Constructs a new Message.
          */
         public Message(PlaceholderConfigKey key) {
-            this.key = key;
-            this.messageString = getConfig().getString("messages." + key.getPath());
+            String configuredMessage = getConfig().getString("messages." + key.getPath());
+            if (configuredMessage == null) {
+                plugin.getSlf4jLogger().warn("Missing message key '{}', using empty fallback.", key.getPath());
+                configuredMessage = "";
+            }
+            this.messageString = configuredMessage;
             this.component = key.hasPlaceholders() ? null : miniMessage.deserialize(messageString);
         }
 
@@ -84,8 +87,4 @@ public class MessagesResource extends VHRResource {
         }
     }
 
-    @Override
-    public void migrate(int currentConfigVersion) {
-
-    }
 }

@@ -54,7 +54,6 @@ public class RVelocityEventManager {
 
     private RVelocityEventManager() {}
 
-    @SuppressWarnings("unchecked")
     public static Multimap<Class<?>, Object> getHandlersByType(EventManager manager) {
         return Reflect.getFieldValue(HANDLERS_BY_TYPE_FIELD, manager);
     }

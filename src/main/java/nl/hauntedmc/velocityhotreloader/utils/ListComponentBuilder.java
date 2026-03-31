@@ -61,7 +61,7 @@ public class ListComponentBuilder<T> {
         if (elements.isEmpty()) {
             return emptyValue;
         } else if (elements.size() == 1) {
-            return format.format(elements.iterator().next());
+            return format.format(elements.getFirst());
         } else {
             TextComponent.Builder builder = Component.text();
 

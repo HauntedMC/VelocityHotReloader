@@ -37,19 +37,10 @@ public abstract class VHRResource {
         return config;
     }
 
-    public VHRConfig getDefaultConfig() {
-        return defaultConfig;
-    }
-
-    protected void reset(String path) {
-        config.set(path, JsonConfig.toObjectValue(defaultConfig.getJsonElement(path)));
-    }
-
     /**
      * Migrates values in the config.
      */
     public void migrate() {
-        migrate(config.getInt("config-version"));
         config.set("config-version", defaultConfig.getInt("config-version"));
         try {
             config.save();
@@ -58,5 +49,4 @@ public abstract class VHRResource {
         }
     }
 
-    public abstract void migrate(int currentConfigVersion);
 }

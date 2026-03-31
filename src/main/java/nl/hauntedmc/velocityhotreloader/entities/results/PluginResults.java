@@ -6,6 +6,7 @@ import java.util.List;
 import nl.hauntedmc.velocityhotreloader.config.ConfigKey;
 import nl.hauntedmc.velocityhotreloader.entities.VHRAudience;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import org.jspecify.annotations.NonNull;
 
 public class PluginResults<T> implements Iterable<PluginResult<T>> {
 
@@ -66,11 +67,11 @@ public class PluginResults<T> implements Iterable<PluginResult<T>> {
     }
 
     public PluginResult<T> first() {
-        return results.get(0);
+        return results.getFirst();
     }
 
     public PluginResult<T> last() {
-        return results.get(results.size() - 1);
+        return results.getLast();
     }
 
     /**
@@ -88,7 +89,7 @@ public class PluginResults<T> implements Iterable<PluginResult<T>> {
     }
 
     @Override
-    public Iterator<PluginResult<T>> iterator() {
+    public @NonNull Iterator<PluginResult<T>> iterator() {
         return results.iterator();
     }
 }

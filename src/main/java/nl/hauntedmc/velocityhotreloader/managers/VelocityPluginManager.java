@@ -114,9 +114,13 @@ public class VelocityPluginManager {
         Object javaPluginLoader = RJavaPluginLoader.newInstance(proxy, pluginsFolder.toPath());
 
         for (File file : getPluginJars()) {
-            PluginDescription desc = RJavaPluginLoader.loadPluginDescription(javaPluginLoader, file.toPath());
-            if (desc.getId().equals(pluginName)) {
-                return Optional.of(file);
+            try {
+                PluginDescription desc = RJavaPluginLoader.loadPluginDescription(javaPluginLoader, file.toPath());
+                if (desc.getId().equals(pluginName)) {
+                    return Optional.of(file);
+                }
+            } catch (RuntimeException ex) {
+                logger.warn("Unable to parse plugin description from '{}'", file, ex);
             }
         }
         return Optional.empty();
@@ -162,13 +166,9 @@ public class VelocityPluginManager {
             Object javaPluginLoader = RJavaPluginLoader.newInstance(proxy, baseDirectory);
             PluginDescription candidate = RJavaPluginLoader.loadPluginDescription(javaPluginLoader, source);
             return Optional.of(new VelocityPluginDescription(candidate));
-        } catch (Exception ex) {
+        } catch (RuntimeException ex) {
             throw new InvalidPluginDescriptionException(ex);
         }
-    }
-
-    public Object getInstance(PluginContainer plugin) {
-        return plugin.getInstance().orElse(null);
     }
 
     public Set<String> getCommands() {
@@ -184,7 +184,10 @@ public class VelocityPluginManager {
         }
 
         File[] files = parent.listFiles(f -> f.getName().endsWith(".jar"));
-        return files != null ? files : new File[0];
+        if (files == null) {
+            return new File[0];
+        }
+        return files;
     }
 
     public List<String> getPluginFileNames() {
@@ -194,7 +197,11 @@ public class VelocityPluginManager {
     }
 
     public PluginResult<PluginContainer> loadPlugin(String pluginFile) {
-        File file = new File(getPluginsFolder(), pluginFile);
+        File pluginsFolder = getPluginsFolder();
+        if (pluginsFolder == null) {
+            return new PluginResult<>(pluginFile, Result.ERROR);
+        }
+        File file = new File(pluginsFolder, pluginFile);
         if (!file.exists()) {
             return new PluginResult<>(pluginFile, Result.NOT_EXISTS);
         }
@@ -522,11 +529,8 @@ public class VelocityPluginManager {
 
             try {
                 RJavaPluginLoader.createPlugin(javaPluginLoader, container, module, commonModule);
-            } catch (Exception ex) {
-                logger.error(
-                        String.format("Can't create plugin %s", container.getDescription().getId()),
-                        ex
-                );
+            } catch (RuntimeException ex) {
+                logger.error("Can't create plugin {}", container.getDescription().getId(), ex);
                 return enableResults.addResult(pluginId, Result.ERROR);
             }
 

@@ -3,23 +3,7 @@ package nl.hauntedmc.velocityhotreloader.entities.results;
 import nl.hauntedmc.velocityhotreloader.config.ConfigKey;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 
-public class PluginWatchResult implements AbstractResult {
-
-    private final WatchResult result;
-    private final TagResolver[] placeholders;
-
-    public PluginWatchResult(WatchResult result, TagResolver... placeholders) {
-        this.result = result;
-        this.placeholders = placeholders;
-    }
-
-    public WatchResult getResult() {
-        return result;
-    }
-
-    public TagResolver[] getPlaceholders() {
-        return placeholders;
-    }
+public record PluginWatchResult(WatchResult result, TagResolver... placeholders) implements AbstractResult {
 
     @Override
     public ConfigKey getKey() {
