@@ -1,4 +1,4 @@
-package nl.hauntedmc.velocityhotreloader.util;
+package nl.hauntedmc.velocityhotreloader.utils;
 
 import java.util.Collections;
 import java.util.HashMap;

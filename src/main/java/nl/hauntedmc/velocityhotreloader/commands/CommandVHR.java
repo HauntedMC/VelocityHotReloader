@@ -29,10 +29,8 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.CommandManager;
-import org.incendo.cloud.component.CommandComponent;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.parser.ParserDescriptor;
-import org.incendo.cloud.suggestion.BlockingSuggestionProvider;
 
 import java.io.File;
 import java.nio.file.Path;

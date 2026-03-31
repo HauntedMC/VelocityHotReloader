@@ -1,6 +1,5 @@
 package nl.hauntedmc.velocityhotreloader.tasks;
 
-import com.sun.nio.file.SensitivityWatchEventModifier;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.scheduler.ScheduledTask;
 import nl.hauntedmc.velocityhotreloader.config.MessageKey;
@@ -78,7 +77,7 @@ public class PluginWatcherTask extends AbstractTask {
 
             VelocityPluginManager pluginManager = plugin.getPluginManager();
             Path basePath = pluginManager.getPluginsFolder().toPath();
-            basePath.register(watchService, EVENTS, SensitivityWatchEventModifier.HIGH);
+            basePath.register(watchService, EVENTS);
 
             while (run.get()) {
                 WatchKey key = watchService.take();
@@ -96,7 +95,7 @@ public class PluginWatcherTask extends AbstractTask {
                 }
             }
         } catch (IOException ex) {
-            ex.printStackTrace();
+            plugin.getSlf4jLogger().error("File watcher failed unexpectedly", ex);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         } catch (ClosedWatchServiceException ignored) {
@@ -154,6 +153,7 @@ public class PluginWatcherTask extends AbstractTask {
         long previousTimestamp = entry.timestamp;
         entry.update(fileOptional.get());
 
+        // Debounce multiple rapid file system events into a single reload operation.
         task = plugin.getTaskManager().runTaskLater(() -> {
             if (entry.hash.equals(previousHash) || previousTimestamp < entry.timestamp - 1000L) {
                 send(WatchResult.CHANGE);
@@ -197,10 +197,14 @@ public class PluginWatcherTask extends AbstractTask {
     @Override
     public void cancel() {
         run.set(false);
+        if (watchService == null) {
+            return;
+        }
+
         try {
             watchService.close();
         } catch (IOException ex) {
-            ex.printStackTrace();
+            plugin.getSlf4jLogger().warn("Failed to close watch service", ex);
         }
     }
 

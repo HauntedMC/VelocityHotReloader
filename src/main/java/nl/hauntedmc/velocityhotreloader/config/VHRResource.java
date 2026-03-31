@@ -1,6 +1,7 @@
 package nl.hauntedmc.velocityhotreloader.config;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import nl.hauntedmc.velocityhotreloader.VHR;
 
 public abstract class VHRResource {
@@ -53,7 +54,7 @@ public abstract class VHRResource {
         try {
             config.save();
         } catch (IOException ex) {
-            ex.printStackTrace();
+            throw new UncheckedIOException("Unable to save migrated configuration", ex);
         }
     }
 

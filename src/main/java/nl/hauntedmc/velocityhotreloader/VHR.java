@@ -2,7 +2,6 @@ package nl.hauntedmc.velocityhotreloader;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -10,7 +9,6 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
-import com.velocitypowered.api.scheduler.ScheduledTask;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -30,15 +28,14 @@ import nl.hauntedmc.velocityhotreloader.config.MessagesResource;
 import nl.hauntedmc.velocityhotreloader.entities.results.CloseablePluginResults;
 import nl.hauntedmc.velocityhotreloader.entities.results.PluginResults;
 import nl.hauntedmc.velocityhotreloader.managers.WatchManager;
-import nl.hauntedmc.velocityhotreloader.utils.FileUtils;
 import nl.hauntedmc.velocityhotreloader.entities.VelocityAudience;
 import nl.hauntedmc.velocityhotreloader.entities.VelocityAudienceProvider;
-import nl.hauntedmc.velocityhotreloader.entities.VelocityPluginDescription;
 import nl.hauntedmc.velocityhotreloader.entities.VelocityResourceProvider;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginCommandManager;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginManager;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityTaskManager;
 import nl.hauntedmc.velocityhotreloader.reflection.RVelocityCommandManager;
+import nl.hauntedmc.velocityhotreloader.utils.FileUtils;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.CommandManager;
 import org.incendo.cloud.SenderMapper;
@@ -47,6 +44,9 @@ import org.incendo.cloud.execution.ExecutionCoordinator;
 import org.incendo.cloud.velocity.VelocityCommandManager;
 import org.slf4j.Logger;
 
+/**
+ * Main Velocity plugin entrypoint.
+ */
 @Plugin(
         id = "velocityhotreloader",
         name = "VelocityHotReloader",
@@ -92,7 +92,7 @@ public class VHR {
         try {
             this.pluginCommandManager = VelocityPluginCommandManager.load(dataDirectory.resolve(PLUGIN_COMMANDS_CACHE));
         } catch (IOException ex) {
-            throw new RuntimeException(ex);
+            throw new IllegalStateException("Unable to load plugin command cache", ex);
         }
 
         RVelocityCommandManager.proxyRegistrars(
@@ -120,7 +120,7 @@ public class VHR {
         try {
             pluginCommandManager.save();
         } catch (IOException ex) {
-            ex.printStackTrace();
+            slf4jLogger.error("Failed to save plugin command cache", ex);
         }
     }
 
@@ -154,10 +154,6 @@ public class VHR {
 
     public VelocityAudienceProvider getChatProvider() {
         return chatProvider;
-    }
-
-    public java.util.logging.Logger getLogger() {
-        return java.util.logging.Logger.getLogger(slf4jLogger.getName());
     }
 
     public File getDataFolder() {
@@ -194,11 +190,11 @@ public class VHR {
 
         File file = new File(getDataFolder(), targetName);
         if (!file.exists()) {
-            getLogger().info("'" + targetName + "' not found, creating!");
+            slf4jLogger.info("'{}' not found, creating!", targetName);
             try {
                 FileUtils.saveResource(getResourceProvider().getResource(resource), file);
             } catch (IOException ex) {
-                ex.printStackTrace();
+                slf4jLogger.error("Failed to copy resource '{}' to '{}'", resource, file, ex);
             }
         }
         return file;
@@ -231,8 +227,9 @@ public class VHR {
         for (String pluginId : pluginIds) {
             Optional<PluginContainer> pluginOptional = getPluginManager().getPlugin(pluginId);
             if (!pluginOptional.isPresent()) {
-                getLogger().warning(
-                        "Plugin '" + pluginId + "' defined in config.yml 'unload-after-startup' is not loaded!"
+                slf4jLogger.warn(
+                        "Plugin '{}' defined in config.yml 'unload-after-startup' is not loaded!",
+                        pluginId
                 );
                 continue;
             }
@@ -258,7 +255,7 @@ public class VHR {
             try {
                 Files.createDirectories(dataFolder);
             } catch (IOException ex) {
-                ex.printStackTrace();
+                throw new IllegalStateException("Unable to create plugin data folder at " + dataFolder, ex);
             }
         }
 

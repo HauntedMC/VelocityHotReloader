@@ -57,9 +57,11 @@ import nl.hauntedmc.velocityhotreloader.reflection.RVelocityScheduler;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.slf4j.Logger;
 
+/**
+ * Handles plugin lifecycle operations (load/enable/disable/reload/unload) for Velocity plugins.
+ */
 public class VelocityPluginManager {
 
-    private static VelocityPluginManager instance;
     private final ProxyServer proxy;
     private final Logger logger;
     private final VelocityPluginCommandManager pluginCommandManager;
@@ -68,14 +70,9 @@ public class VelocityPluginManager {
      * Constructs a new VelocityPluginManager.
      */
     public VelocityPluginManager(ProxyServer proxy, Logger logger, VelocityPluginCommandManager pluginCommandManager) {
-        instance = this;
         this.proxy = proxy;
         this.logger = logger;
         this.pluginCommandManager = pluginCommandManager;
-    }
-
-    public static VelocityPluginManager get() {
-        return instance;
     }
 
     public File getPluginsFolder() {
@@ -109,7 +106,7 @@ public class VelocityPluginManager {
     }
 
     public Optional<File> getPluginFile(String pluginName) {
-        Object javaPluginLoader = RJavaPluginLoader.newInstance(instance.proxy, getPluginsFolder().toPath());
+        Object javaPluginLoader = RJavaPluginLoader.newInstance(proxy, getPluginsFolder().toPath());
 
         for (File file : getPluginJars()) {
             PluginDescription desc = RJavaPluginLoader.loadPluginDescription(javaPluginLoader, file.toPath());
@@ -212,7 +209,7 @@ public class VelocityPluginManager {
 
                 description = descriptionOptional.get();
             } catch (InvalidPluginDescriptionException ex) {
-                ex.printStackTrace();
+                logger.warn("Invalid plugin description for '{}'", file, ex);
                 return new PluginResults<PluginContainer>().addResult(file.getName(), Result.INVALID_DESCRIPTION);
             }
 
@@ -227,7 +224,7 @@ public class VelocityPluginManager {
         try {
             orderedDescriptions = determineLoadOrder(descriptions);
         } catch (IllegalStateException ex) {
-            ex.printStackTrace();
+            logger.error("Failed to determine load order for plugin files: {}", files, ex);
 
             StringBuilder sb = new StringBuilder();
             for (File file : files) {
@@ -296,7 +293,7 @@ public class VelocityPluginManager {
         try {
             orderedPlugins = determineLoadOrder(plugins);
         } catch (IllegalStateException ex) {
-            ex.printStackTrace();
+            logger.error("Failed to determine disable order for plugins: {}", plugins, ex);
 
             StringBuilder sb = new StringBuilder();
             for (PluginContainer plugin : plugins) {
@@ -376,7 +373,7 @@ public class VelocityPluginManager {
         try {
             orderedPlugins = determineLoadOrder(plugins);
         } catch (IllegalStateException ex) {
-            ex.printStackTrace();
+            logger.error("Failed to determine unload order for plugins: {}", plugins, ex);
 
             StringBuilder sb = new StringBuilder();
             for (PluginContainer plugin : plugins) {

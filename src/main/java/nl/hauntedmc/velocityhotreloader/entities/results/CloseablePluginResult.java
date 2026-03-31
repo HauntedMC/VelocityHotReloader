@@ -6,9 +6,12 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CloseablePluginResult<T> extends PluginResult<T> implements Closeable {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(CloseablePluginResult.class);
     private final List<Closeable> closeables;
 
     public CloseablePluginResult(String pluginId, Result result) {
@@ -35,7 +38,7 @@ public class CloseablePluginResult<T> extends PluginResult<T> implements Closeab
         try {
             close();
         } catch (IOException ex) {
-            ex.printStackTrace();
+            LOGGER.warn("Failed to close plugin resources for '{}'", getPluginId(), ex);
         }
     }
 

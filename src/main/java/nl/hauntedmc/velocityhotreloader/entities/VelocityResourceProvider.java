@@ -3,6 +3,7 @@ package nl.hauntedmc.velocityhotreloader.entities;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -34,9 +35,8 @@ public class VelocityResourceProvider implements ResourceProvider {
 
             return config;
         } catch (IOException ex) {
-            ex.printStackTrace();
+            throw new UncheckedIOException("Unable to load configuration from resource stream", ex);
         }
-        return null;
     }
 
     @Override

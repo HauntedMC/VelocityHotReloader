@@ -3,8 +3,6 @@ package nl.hauntedmc.velocityhotreloader.utils;
 import dev.frankheijden.minecraftreflection.Reflection;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.function.Consumer;
 import sun.misc.Unsafe;
 
@@ -19,7 +17,7 @@ public class ReflectionUtils {
                     "theUnsafe"
             ));
         } catch (Throwable th) {
-            th.printStackTrace();
+            throw new ExceptionInInitializerError(th);
         }
     }
 
@@ -29,13 +27,10 @@ public class ReflectionUtils {
      * Performs a privileged action while accessing {@link Unsafe}.
      */
     public static void doPrivilegedWithUnsafe(Consumer<Unsafe> privilegedAction) {
-        AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-            try {
-                privilegedAction.accept((Unsafe) theUnsafeFieldMethodHandle.invoke());
-            } catch (Throwable th) {
-                th.printStackTrace();
-            }
-            return null;
-        });
+        try {
+            privilegedAction.accept((Unsafe) theUnsafeFieldMethodHandle.invoke());
+        } catch (Throwable th) {
+            throw new IllegalStateException("Unable to execute operation with Unsafe", th);
+        }
     }
 }

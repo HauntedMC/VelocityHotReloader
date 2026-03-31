@@ -32,7 +32,7 @@ public class RVelocityCommandManager {
     /**
      * Proxies the registrars.
      */
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes", "deprecation"})
     public static void proxyRegistrars(
             ProxyServer proxy,
             ClassLoader loader,
@@ -44,7 +44,7 @@ public class RVelocityCommandManager {
         try {
             commandRegistrarClass = Class.forName("com.velocitypowered.proxy.command.registrar.CommandRegistrar");
         } catch (ClassNotFoundException ex) {
-            ex.printStackTrace();
+            VHR.getInstance().getSlf4jLogger().error("Unable to load Velocity command registrar class", ex);
             return;
         }
 

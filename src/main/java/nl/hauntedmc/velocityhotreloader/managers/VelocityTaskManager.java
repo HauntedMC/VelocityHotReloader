@@ -9,7 +9,9 @@ import java.util.Map;
 import nl.hauntedmc.velocityhotreloader.entities.AbstractTask;
 import nl.hauntedmc.velocityhotreloader.VHR;
 
-
+/**
+ * Tracks scheduled tasks so they can be cancelled individually or in bulk on shutdown/reload.
+ */
 public class VelocityTaskManager {
 
     private final VHR plugin;

@@ -2,6 +2,7 @@ package nl.hauntedmc.velocityhotreloader.config;
 
 import com.google.gson.JsonElement;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -10,7 +11,7 @@ import java.util.Map;
 import nl.hauntedmc.velocityhotreloader.providers.ResourceProvider;
 
 /**
- * A wrap for a Configuration file.
+ * Unified access layer for plugin configuration files.
  */
 public interface VHRConfig {
 
@@ -166,7 +167,7 @@ public interface VHRConfig {
         try {
             conf.save();
         } catch (IOException ex) {
-            ex.printStackTrace();
+            throw new UncheckedIOException("Unable to save configuration", ex);
         }
         return conf;
     }
@@ -183,7 +184,7 @@ public interface VHRConfig {
             try {
                 Files.createFile(path);
             } catch (IOException ex) {
-                ex.printStackTrace();
+                throw new UncheckedIOException("Unable to create configuration file at " + path, ex);
             }
         }
 

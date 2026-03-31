@@ -6,8 +6,12 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CloseablePluginResults<T> extends PluginResults<T> implements Closeable {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CloseablePluginResults.class);
 
     @Override
     public CloseablePluginResults<T> addResult(PluginResult<T> pluginResult) {
@@ -86,7 +90,7 @@ public class CloseablePluginResults<T> extends PluginResults<T> implements Close
         try {
             close();
         } catch (IOException ex) {
-            ex.printStackTrace();
+            LOGGER.warn("Failed to close one or more plugin resources", ex);
         }
     }
 
