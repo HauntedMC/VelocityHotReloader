@@ -13,17 +13,16 @@ import nl.hauntedmc.velocityhotreloader.common.commands.arguments.PluginsParser;
 import nl.hauntedmc.velocityhotreloader.common.config.MessageKey;
 import nl.hauntedmc.velocityhotreloader.common.config.MessagesResource;
 import nl.hauntedmc.velocityhotreloader.common.config.VHRConfig;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.CloseablePluginResults;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.PluginResult;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.PluginResults;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.PluginWatchResults;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.Result;
-import nl.hauntedmc.velocityhotreloader.common.managers.AbstractPluginManager;
 import nl.hauntedmc.velocityhotreloader.common.utils.KeyValueComponentBuilder;
 import nl.hauntedmc.velocityhotreloader.common.utils.ListComponentBuilder;
 import nl.hauntedmc.velocityhotreloader.velocity.VHR;
+import nl.hauntedmc.velocityhotreloader.velocity.entities.VelocityAudience;
+import nl.hauntedmc.velocityhotreloader.velocity.managers.VelocityPluginManager;
 import nl.hauntedmc.velocityhotreloader.velocity.reflection.RVelocityCommandManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -40,34 +39,30 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 
-public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudience<?>>
-        extends VHRCommand<U, C> {
+public class CommandVHR extends VHRCommand {
 
-    protected final IntFunction<P[]> arrayCreator;
-    protected final Class<P> pluginType;
-
-    public CommandVHR(U plugin, IntFunction<P[]> arrayCreator, Class<P> pluginType) {
+    public CommandVHR(VHR plugin) {
         super(plugin, "velocityhotreloader");
-        this.arrayCreator = arrayCreator;
-        this.pluginType = pluginType;
     }
 
-    protected ParserDescriptor<C, P[]> pluginsParser() {
+    protected ParserDescriptor<VelocityAudience, PluginContainer[]> pluginsParser() {
         return pluginsParser(null);
     }
 
-    protected ParserDescriptor<C, P[]> pluginsParser(String path) {
-        return PluginsParser.pluginsParser(this.plugin, path, this.arrayCreator, this.pluginType);
+    protected ParserDescriptor<VelocityAudience, PluginContainer[]> pluginsParser(String path) {
+        return PluginsParser.pluginsParser(this.plugin, path);
     }
 
     @Override
-    public void register(CommandManager<C> manager, Command.Builder<C> builder) {
+    public void register(
+            CommandManager<VelocityAudience> manager,
+            Command.Builder<VelocityAudience> builder
+    ) {
         addRequiredComponent("jarFiles", JarFilesParser.jarFilesParser(this.plugin));
         addRequiredComponent("plugins", pluginsParser());
-        addRequiredComponent("plugin", PluginParser.pluginParser(this.plugin, this.pluginType));
+        addRequiredComponent("plugin", PluginParser.pluginParser(this.plugin));
         addRequiredComponent("command", CommandParser.commandParser(this.plugin));
 
         manager.command(builder
@@ -101,8 +96,8 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
                 .handler(this::handleCommandInfo));
     }
 
-    private void handleHelpCommand(CommandContext<C> context) {
-        C sender = context.sender();
+    private void handleHelpCommand(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
 
         MessagesResource messages = plugin.getMessagesResource();
         sender.sendMessage(messages.get(MessageKey.HELP_HEADER).toComponent());
@@ -172,14 +167,14 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
         return shortestAlias;
     }
 
-    private void handleReload(CommandContext<C> context) {
-        C sender = context.sender();
+    private void handleReload(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
         plugin.reload();
         plugin.getMessagesResource().get(MessageKey.RELOAD).sendTo(sender);
     }
 
-    private void handleRestart(CommandContext<C> context) {
-        C sender = context.sender();
+    private void handleRestart(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
 
         if (checkDependingPlugins(context, sender, Collections.singletonList(plugin.getPlugin()), "restart")) {
             return;
@@ -187,25 +182,25 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
 
     }
 
-    private void handleLoadPlugin(CommandContext<C> context) {
-        C sender = context.sender();
+    private void handleLoadPlugin(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
         List<File> jarFiles = Arrays.asList(context.get("jarFiles"));
 
-        AbstractPluginManager<P, ?> pluginManager = plugin.getPluginManager();
-        PluginResults<P> loadResults = pluginManager.loadPlugins(jarFiles);
+        VelocityPluginManager pluginManager = plugin.getPluginManager();
+        PluginResults<PluginContainer> loadResults = pluginManager.loadPlugins(jarFiles);
         if (!loadResults.isSuccess()) {
-            PluginResult<P> failedResult = loadResults.last();
+            PluginResult<PluginContainer> failedResult = loadResults.last();
             failedResult.sendTo(sender, null);
             return;
         }
 
-        PluginResults<P> enableResults = pluginManager.enablePlugins(loadResults.getPlugins());
+        PluginResults<PluginContainer> enableResults = pluginManager.enablePlugins(loadResults.getPlugins());
         enableResults.sendTo(sender, MessageKey.LOADPLUGIN);
     }
 
-    private void handleUnloadPlugin(CommandContext<C> context) {
-        C sender = context.sender();
-        List<P> plugins = Arrays.asList(context.get("plugins"));
+    private void handleUnloadPlugin(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
+        List<PluginContainer> plugins = Arrays.asList(context.get("plugins"));
 
         if (checkProtectedPlugins(sender, plugins)) {
             return;
@@ -215,22 +210,22 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
             return;
         }
 
-        PluginResults<P> disableResults = plugin.getPluginManager().disablePlugins(plugins);
-        for (PluginResult<P> disableResult : disableResults.getResults()) {
+        PluginResults<PluginContainer> disableResults = plugin.getPluginManager().disablePlugins(plugins);
+        for (PluginResult<PluginContainer> disableResult : disableResults.getResults()) {
             if (!disableResult.isSuccess() && disableResult.getResult() != Result.ALREADY_DISABLED) {
                 disableResult.sendTo(sender, null);
                 return;
             }
         }
 
-        CloseablePluginResults<P> unloadResults = plugin.getPluginManager().unloadPlugins(plugins);
+        CloseablePluginResults<PluginContainer> unloadResults = plugin.getPluginManager().unloadPlugins(plugins);
         unloadResults.tryClose();
         unloadResults.sendTo(sender, MessageKey.UNLOADPLUGIN);
     }
 
-    private void handleReloadPlugin(CommandContext<C> context) {
-        C sender = context.sender();
-        List<P> plugins = Arrays.asList(context.get("plugins"));
+    private void handleReloadPlugin(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
+        List<PluginContainer> plugins = Arrays.asList(context.get("plugins"));
 
         if (checkProtectedPlugins(sender, plugins)) {
             return;
@@ -244,22 +239,26 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
             return;
         }
 
-        PluginResults<P> reloadResults = plugin.getPluginManager().reloadPlugins(plugins);
+        PluginResults<PluginContainer> reloadResults = plugin.getPluginManager().reloadPlugins(plugins);
         reloadResults.sendTo(sender, MessageKey.RELOADPLUGIN_SUCCESS);
     }
 
-    protected boolean checkDependingPlugins(CommandContext<C> context, C sender, List<P> plugins, String subcommand) {
+    protected boolean checkDependingPlugins(
+            CommandContext<VelocityAudience> context,
+            VelocityAudience sender,
+            List<PluginContainer> plugins,
+            String subcommand
+    ) {
         if (context.flags().contains("force")) return false;
 
-        AbstractPluginManager<P, ?> pluginManager = plugin.getPluginManager();
+        VelocityPluginManager pluginManager = plugin.getPluginManager();
         MessagesResource messages = plugin.getMessagesResource();
 
         boolean hasDependingPlugins = false;
-        for (P plugin : plugins) {
-            String pluginId = pluginManager.getPluginId(plugin);
+        for (PluginContainer pluginContainer : plugins) {
+            String pluginId = pluginManager.getPluginId(pluginContainer);
 
-            List<P> dependingPlugins = pluginManager.getPluginsDependingOn(pluginId);
-            //List<P> dependingPlugins = new ArrayList<>();
+            List<PluginContainer> dependingPlugins = pluginManager.getPluginsDependingOn(pluginId);
 
             if (!dependingPlugins.isEmpty()) {
                 TextComponent.Builder builder = Component.text();
@@ -292,8 +291,12 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
         return hasDependingPlugins;
     }
 
-    protected boolean checkVHR(CommandContext<C> context, C sender, List<P> plugins) {
-        for (P loadedPlugin : plugins) {
+    protected boolean checkVHR(
+            CommandContext<VelocityAudience> context,
+            VelocityAudience sender,
+            List<PluginContainer> plugins
+    ) {
+        for (PluginContainer loadedPlugin : plugins) {
             if (plugin.getPlugin() == loadedPlugin) {
                 String restartCommand = plugin.getCommandsResource().getAllAliases(getRawPath("restart")).stream()
                         .min(Comparator.comparingInt(String::length))
@@ -310,12 +313,12 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
         return false;
     }
 
-    protected boolean checkProtectedPlugins(C sender, List<P> plugins) {
+    protected boolean checkProtectedPlugins(VelocityAudience sender, List<PluginContainer> plugins) {
         List<String> protectedPlugins = plugin.getConfigResource().getConfig().getStringList("protected-plugins");
-        AbstractPluginManager<P, ?> pluginManager = plugin.getPluginManager();
+        VelocityPluginManager pluginManager = plugin.getPluginManager();
         MessagesResource messagesResource = plugin.getMessagesResource();
-        for (P plugin : plugins) {
-            String pluginId = pluginManager.getPluginId(plugin);
+        for (PluginContainer pluginContainer : plugins) {
+            String pluginId = pluginManager.getPluginId(pluginContainer);
             if (protectedPlugins.contains(pluginId)) {
                 sender.sendMessage(messagesResource.get(MessageKey.GENERIC_PROTECTED_PLUGIN).toComponent(
                         Placeholder.unparsed("plugin", pluginId)
@@ -326,9 +329,9 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
         return false;
     }
 
-    private void handleWatchPlugin(CommandContext<C> context) {
-        C sender = context.sender();
-        List<P> plugins = Arrays.asList(context.get("plugins"));
+    private void handleWatchPlugin(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
+        List<PluginContainer> plugins = Arrays.asList(context.get("plugins"));
 
         if (checkDependingPlugins(context, sender, plugins, "watchplugin")) {
             return;
@@ -342,18 +345,18 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
         watchResults.sendTo(sender);
     }
 
-    private void handleUnwatchPlugin(CommandContext<C> context) {
-        C sender = context.sender();
-        P pluginArg = context.get("plugin");
+    private void handleUnwatchPlugin(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
+        PluginContainer pluginArg = context.get("plugin");
 
         String pluginId = plugin.getPluginManager().getPluginId(pluginArg);
         PluginWatchResults watchResults = plugin.getWatchManager().unwatchPluginsAssociatedWith(pluginId);
         watchResults.sendTo(sender);
     }
 
-    private void handlePluginInfo(CommandContext<C> context) {
-        C sender = context.sender();
-        P pluginArg = context.get("plugin");
+    private void handlePluginInfo(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
+        PluginContainer pluginArg = context.get("plugin");
 
         createInfo(sender, "plugininfo", pluginArg, this::createPluginInfo);
     }
@@ -362,10 +365,9 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
     protected KeyValueComponentBuilder createPluginInfo(
             KeyValueComponentBuilder builder,
             Function<Consumer<ListComponentBuilder<String>>, Component> listBuilderFunction,
-            P pluginArg
+            PluginContainer pluginArg
     ) {
-        PluginContainer container = (PluginContainer) pluginArg;
-        PluginDescription desc = container.getDescription();
+        PluginDescription desc = pluginArg.getDescription();
 
         return builder
                 .key("Id").value(desc.getId())
@@ -382,8 +384,8 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
                         .collect(Collectors.toList()))));
     }
 
-    private void handleCommandInfo(CommandContext<C> context) {
-        C sender = context.sender();
+    private void handleCommandInfo(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
         String commandName = context.get("command");
 
         if (!plugin.getPluginManager().getCommands().contains(commandName)) {
@@ -433,7 +435,7 @@ public class CommandVHR<U extends VHRPlugin<P, ?, C, ?, ?>, P, C extends VHRAudi
         return builder;
     }
 
-    private <T> void createInfo(C sender, String command, T item, InfoCreator<T> creator) {
+    private <T> void createInfo(VelocityAudience sender, String command, T item, InfoCreator<T> creator) {
         MessagesResource messages = plugin.getMessagesResource();
 
         MessagesResource.Message formatMessage = messages.get(command + ".format");

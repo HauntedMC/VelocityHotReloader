@@ -3,9 +3,9 @@ package nl.hauntedmc.velocityhotreloader.common.entities.results;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import nl.hauntedmc.velocityhotreloader.common.VHRApp;
 import nl.hauntedmc.velocityhotreloader.common.config.MessagesResource;
 import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 
 public class PluginWatchResults implements Iterable<PluginWatchResult> {
@@ -29,7 +29,7 @@ public class PluginWatchResults implements Iterable<PluginWatchResult> {
      * Sends the result(s) to the given sender.
      */
     public void sendTo(VHRAudience<?> sender) {
-        MessagesResource messages = VHRApp.getPlugin().getMessagesResource();
+        MessagesResource messages = VHR.getInstance().getMessagesResource();
 
         for (PluginWatchResult watchResult : watchResults) {
             sender.sendMessage(messages.get(watchResult.getKey()).toComponent(watchResult.getPlaceholders()));

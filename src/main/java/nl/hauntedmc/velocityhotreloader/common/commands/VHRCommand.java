@@ -15,17 +15,17 @@ import java.util.Map;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import nl.hauntedmc.velocityhotreloader.common.config.VHRConfig;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
+import nl.hauntedmc.velocityhotreloader.velocity.entities.VelocityAudience;
 
-public abstract class VHRCommand<U extends VHRPlugin<?, ?, C, ?, ?>, C extends VHRAudience<?>> {
+public abstract class VHRCommand {
 
-    protected final U plugin;
+    protected final VHR plugin;
     protected final String commandName;
     protected final VHRConfig commandConfig;
-    protected final Map<String, CommandComponent<C>> components;
+    protected final Map<String, CommandComponent<VelocityAudience>> components;
 
-    protected VHRCommand(U plugin, String commandName) {
+    protected VHRCommand(VHR plugin, String commandName) {
         this.plugin = plugin;
         this.commandName = commandName;
         this.commandConfig = (VHRConfig) plugin.getCommandsResource().getConfig()
@@ -36,7 +36,7 @@ public abstract class VHRCommand<U extends VHRPlugin<?, ?, C, ?, ?>, C extends V
     /**
      * Registers commands with the given CommandManager.
      */
-    public final void register(CommandManager<C> manager) {
+    public final void register(CommandManager<VelocityAudience> manager) {
         register(
                 manager,
                 manager.commandBuilder(
@@ -48,14 +48,17 @@ public abstract class VHRCommand<U extends VHRPlugin<?, ?, C, ?, ?>, C extends V
         );
     }
 
-    protected abstract void register(CommandManager<C> manager, Command.Builder<C> builder);
+    protected abstract void register(
+            CommandManager<VelocityAudience> manager,
+            Command.Builder<VelocityAudience> builder
+    );
 
-    public void addComponent(CommandComponent<C> component) {
+    public void addComponent(CommandComponent<VelocityAudience> component) {
         this.components.put(component.name(), component);
     }
 
-    public <T> void addRequiredComponent(String name, ParserDescriptor<C, T> parser) {
-        var component = CommandComponent.<C, T>builder()
+    public <T> void addRequiredComponent(String name, ParserDescriptor<VelocityAudience, T> parser) {
+        var component = CommandComponent.<VelocityAudience, T>builder()
                 .name(name)
                 .required(true)
                 .parser(parser)
@@ -63,8 +66,8 @@ public abstract class VHRCommand<U extends VHRPlugin<?, ?, C, ?, ?>, C extends V
         addComponent(component);
     }
 
-    public <T> void addOptionalComponent(String name, ParserDescriptor<C, T> parser) {
-        var component = CommandComponent.<C, T>builder()
+    public <T> void addOptionalComponent(String name, ParserDescriptor<VelocityAudience, T> parser) {
+        var component = CommandComponent.<VelocityAudience, T>builder()
                 .name(name)
                 .required(false)
                 .parser(parser)
@@ -72,7 +75,7 @@ public abstract class VHRCommand<U extends VHRPlugin<?, ?, C, ?, ?>, C extends V
         addComponent(component);
     }
 
-    public CommandComponent<C> getComponent(String name) {
+    public CommandComponent<VelocityAudience> getComponent(String name) {
         return this.components.get(name);
     }
 
@@ -80,10 +83,10 @@ public abstract class VHRCommand<U extends VHRPlugin<?, ?, C, ?, ?>, C extends V
      * Builds a subcommand from the config.
      */
     public void registerSubcommand(
-            CommandManager<C> manager,
-            Command.Builder<C> builder,
+            CommandManager<VelocityAudience> manager,
+            Command.Builder<VelocityAudience> builder,
             String subcommandName,
-            UnaryOperator<Command.Builder<C>> builderUnaryOperator
+            UnaryOperator<Command.Builder<VelocityAudience>> builderUnaryOperator
     ) {
         CommandElement subcommand = parseSubcommand(subcommandName);
 
@@ -91,7 +94,7 @@ public abstract class VHRCommand<U extends VHRPlugin<?, ?, C, ?, ?>, C extends V
                 Stream.of(subcommand.getMain()),
                 Arrays.stream(subcommand.getAliases())
         ).map(cmd -> {
-            Command.Builder<C> subcommandBuilder = builder
+            Command.Builder<VelocityAudience> subcommandBuilder = builder
                     .literal(cmd, subcommand.getDescription())
                     .permission(subcommand.getPermission());
             for (CommandElement flagElement : subcommand.getFlags()) {
@@ -157,16 +160,7 @@ public abstract class VHRCommand<U extends VHRPlugin<?, ?, C, ?, ?>, C extends V
     }
 
     private String applyPrefix(String str) {
-        final String prefixChar;
-        switch (plugin.getPlatform()) {
-            case VELOCITY:
-                prefixChar = "v";
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown platform: " + plugin.getPlatform().name());
-        }
-
-        return str.replace("%prefix%", prefixChar);
+        return str.replace("%prefix%", "v");
     }
 
     protected static class CommandElement {

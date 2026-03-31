@@ -54,7 +54,6 @@ dependencies {
 
 tasks {
     blossom {
-        replaceToken("{version}", version, "src/main/java/nl/hauntedmc/velocityhotreloader/common/VHRApp.java")
         replaceToken("{version}", version, "src/main/java/nl/hauntedmc/velocityhotreloader/velocity/VHR.java")
     }
 

@@ -1,10 +1,9 @@
 package nl.hauntedmc.velocityhotreloader.common.commands.arguments;
 
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
-
+import com.velocitypowered.api.plugin.PluginContainer;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
+import nl.hauntedmc.velocityhotreloader.velocity.entities.VelocityAudience;
 import org.checkerframework.checker.nullness.qual.NonNull;
-
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.context.CommandInput;
 import org.incendo.cloud.parser.ArgumentParseResult;
@@ -16,70 +15,64 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.IntFunction;
 
-public class PluginsParser<C extends VHRAudience<?>, P> implements ArgumentParser<C, P[]>, BlockingSuggestionProvider.Strings<C> {
+public class PluginsParser implements
+        ArgumentParser<VelocityAudience, PluginContainer[]>,
+        BlockingSuggestionProvider.Strings<VelocityAudience> {
 
-    private final P[] empty;
+    private static final PluginContainer[] EMPTY = new PluginContainer[0];
 
-    private final VHRPlugin<P, ?, C, ?, ?> plugin;
-    private final IntFunction<P[]> arrayFunction;
+    private final VHR plugin;
     private final String commandConfigPath;
 
-    public PluginsParser(VHRPlugin<P, ?, C, ?, ?> plugin,
-                         String commandConfigPath,
-                         IntFunction<P[]> arrayFunction) {
+    public PluginsParser(VHR plugin, String commandConfigPath) {
         this.plugin = plugin;
-        this.empty = arrayFunction.apply(0);
-        this.arrayFunction = arrayFunction;
         this.commandConfigPath = commandConfigPath;
     }
 
-    public static <C extends VHRAudience<?>, P> ParserDescriptor<C, P[]> pluginsParser(
-            VHRPlugin<P, ?, C, ?, ?> plugin,
-            IntFunction<P[]> arrayFunction,
-            Class<P> pluginType
+    public static ParserDescriptor<VelocityAudience, PluginContainer[]> pluginsParser(
+            VHR plugin
     ) {
-        return pluginsParser(plugin, null, arrayFunction, pluginType);
+        return pluginsParser(plugin, null);
     }
 
-    @SuppressWarnings("unchecked")
-    public static <C extends VHRAudience<?>, P> ParserDescriptor<C, P[]> pluginsParser(
-            VHRPlugin<P, ?, C, ?, ?> plugin,
-            String commandConfigPath,
-            IntFunction<P[]> arrayFunction,
-            Class<P> pluginType
+    public static ParserDescriptor<VelocityAudience, PluginContainer[]> pluginsParser(
+            VHR plugin,
+            String commandConfigPath
     ) {
-        return ParserDescriptor.of(new PluginsParser<>(plugin, commandConfigPath, arrayFunction),
-                (Class<P[]>) pluginType.arrayType());
+        return ParserDescriptor.of(new PluginsParser(plugin, commandConfigPath), PluginContainer[].class);
     }
 
 
     @Override
     @NonNull
-    public ArgumentParseResult<P[]> parse(@NonNull CommandContext<C> context, @NonNull CommandInput commandInput) {
+    public ArgumentParseResult<PluginContainer[]> parse(
+            @NonNull CommandContext<VelocityAudience> context,
+            @NonNull CommandInput commandInput
+    ) {
         if (!commandInput.hasRemainingInput()) {
-            return ArgumentParseResult.success(this.empty);
+            return ArgumentParseResult.success(EMPTY);
         }
         Set<String> flags = plugin.getCommandsResource().getAllFlagAliases(commandConfigPath + ".flags.force");
-        List<P> plugins = new ArrayList<>();
+        List<PluginContainer> plugins = new ArrayList<>();
         while (commandInput.hasRemainingInput()) {
             String pluginName = commandInput.peekString();
             if (flags.contains(pluginName)) {
                 continue;
             }
-            Optional<P> pluginOptional = plugin.getPluginManager().getPlugin(pluginName);
+            Optional<PluginContainer> pluginOptional = plugin.getPluginManager().getPlugin(pluginName);
             if (pluginOptional.isEmpty()) {
                 return ArgumentParseResult.failure(new IllegalArgumentException("Plugin '" + pluginName + "' does not exist!"));
             }
             commandInput.readString();
             plugins.add(pluginOptional.get());
         }
-        return ArgumentParseResult.success(plugins.toArray(this.arrayFunction));
+        return ArgumentParseResult.success(plugins.toArray(PluginContainer[]::new));
     }
 
     @Override
-    public @NonNull Iterable<@NonNull String> stringSuggestions(@NonNull CommandContext<C> commandContext,
+    public @NonNull Iterable<@NonNull String> stringSuggestions(
+                                                                @NonNull CommandContext<VelocityAudience> commandContext,
                                                                 @NonNull CommandInput input) {
         return this.plugin.getPluginManager().getPluginNames();
     }

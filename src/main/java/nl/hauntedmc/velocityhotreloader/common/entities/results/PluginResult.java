@@ -1,8 +1,8 @@
 package nl.hauntedmc.velocityhotreloader.common.entities.results;
 
-import nl.hauntedmc.velocityhotreloader.common.VHRApp;
 import nl.hauntedmc.velocityhotreloader.common.config.ConfigKey;
 import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 
@@ -51,7 +51,7 @@ public class PluginResult<T> implements AbstractResult {
 
     public void sendTo(VHRAudience<?> sender, ConfigKey successKey) {
         ConfigKey key = isSuccess() ? successKey : result.getKey();
-        sender.sendMessage(VHRApp.getPlugin().getMessagesResource().get(key).toComponent(placeholders));
+        sender.sendMessage(VHR.getInstance().getMessagesResource().get(key).toComponent(placeholders));
     }
 
     @Override

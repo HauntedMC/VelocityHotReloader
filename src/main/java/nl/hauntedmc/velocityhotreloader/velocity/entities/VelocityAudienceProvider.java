@@ -2,11 +2,10 @@ package nl.hauntedmc.velocityhotreloader.velocity.entities;
 
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
-import nl.hauntedmc.velocityhotreloader.common.providers.VHRAudienceProvider;
 import nl.hauntedmc.velocityhotreloader.velocity.VHR;
 import net.kyori.adventure.text.Component;
 
-public class VelocityAudienceProvider implements VHRAudienceProvider<CommandSource> {
+public class VelocityAudienceProvider {
 
     private final VHR plugin;
     private final VelocityAudience consoleServerAudience;
@@ -22,17 +21,14 @@ public class VelocityAudienceProvider implements VHRAudienceProvider<CommandSour
         );
     }
 
-    @Override
     public VelocityAudience getConsoleServerAudience() {
         return consoleServerAudience;
     }
 
-    @Override
     public VelocityAudience get(CommandSource source) {
         return new VelocityAudience(source, source);
     }
 
-    @Override
     public void broadcast(Component component, String permission) {
         for (Player player : plugin.getProxy().getAllPlayers()) {
             if (player.hasPermission(permission)) {

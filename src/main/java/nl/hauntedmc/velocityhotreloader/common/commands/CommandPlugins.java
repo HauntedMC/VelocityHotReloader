@@ -1,5 +1,6 @@
 package nl.hauntedmc.velocityhotreloader.common.commands;
 
+import com.velocitypowered.api.plugin.PluginContainer;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.Command;
@@ -10,31 +11,33 @@ import java.util.List;
 import java.util.Set;
 import nl.hauntedmc.velocityhotreloader.common.config.MessageKey;
 import nl.hauntedmc.velocityhotreloader.common.config.MessagesResource;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPluginDescription;
-import nl.hauntedmc.velocityhotreloader.common.managers.AbstractPluginManager;
 import nl.hauntedmc.velocityhotreloader.common.utils.ListComponentBuilder;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
+import nl.hauntedmc.velocityhotreloader.velocity.entities.VelocityAudience;
+import nl.hauntedmc.velocityhotreloader.velocity.entities.VelocityPluginDescription;
+import nl.hauntedmc.velocityhotreloader.velocity.managers.VelocityPluginManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 
 @SuppressWarnings("LineLength")
-public class CommandPlugins<U extends VHRPlugin<P, ?, C, ?, D>, P, C extends VHRAudience<?>, D extends VHRPluginDescription>
-        extends VHRCommand<U, C> {
+public class CommandPlugins extends VHRCommand {
 
-    public CommandPlugins(U plugin) {
+    public CommandPlugins(VHR plugin) {
         super(plugin, "plugins");
     }
 
     @Override
-    protected void register(CommandManager<C> manager, Command.Builder<C> builder) {
+    protected void register(
+            CommandManager<VelocityAudience> manager,
+            Command.Builder<VelocityAudience> builder
+    ) {
         manager.command(builder
                 .flag(parseFlag("version"))
                 .handler(this::handlePlugins));
     }
 
-    private void handlePlugins(CommandContext<C> context) {
-        C sender = context.sender();
+    private void handlePlugins(CommandContext<VelocityAudience> context) {
+        VelocityAudience sender = context.sender();
         boolean hasVersionFlag = context.flags().contains("version");
         handlePlugins(sender, plugin.getPluginManager().getPluginsSorted(), hasVersionFlag);
     }
@@ -45,15 +48,15 @@ public class CommandPlugins<U extends VHRPlugin<P, ?, C, ?, D>, P, C extends VHR
      * @param plugins The plugins to be sent.
      * @param hasVersionFlag Whether to include the plugin version in the format
      */
-    protected void handlePlugins(C sender, List<P> plugins, boolean hasVersionFlag) {
-        List<P> filteredPlugins = new ArrayList<>(plugins.size());
+    protected void handlePlugins(VelocityAudience sender, List<PluginContainer> plugins, boolean hasVersionFlag) {
+        List<PluginContainer> filteredPlugins = new ArrayList<>(plugins.size());
         Set<String> hiddenPlugins = new HashSet<>(plugin.getConfigResource().getConfig().getStringList(
                 "hide-plugins-from-plugins-command"
         ));
-        AbstractPluginManager<P, D> pluginManager = plugin.getPluginManager();
-        for (P plugin : plugins) {
-            if (!hiddenPlugins.contains(pluginManager.getPluginId(plugin))) {
-                filteredPlugins.add(plugin);
+        VelocityPluginManager pluginManager = plugin.getPluginManager();
+        for (PluginContainer pluginContainer : plugins) {
+            if (!hiddenPlugins.contains(pluginManager.getPluginId(pluginContainer))) {
+                filteredPlugins.add(pluginContainer);
             }
         }
 
@@ -67,11 +70,11 @@ public class CommandPlugins<U extends VHRPlugin<P, ?, C, ?, D>, P, C extends VHR
         builder.append(ListComponentBuilder.create(filteredPlugins)
                 .separator(messages.get(MessageKey.PLUGINS_SEPARATOR).toComponent())
                 .lastSeparator(messages.get(MessageKey.PLUGINS_LAST_SEPARATOR).toComponent())
-                .format(plugin -> {
-                    D description = pluginManager.getLoadedPluginDescription(plugin);
+                .format(pluginContainer -> {
+                    VelocityPluginDescription description = pluginManager.getLoadedPluginDescription(pluginContainer);
 
                     TextComponent.Builder formatBuilder = Component.text();
-                    MessageKey formatKey = pluginManager.isPluginEnabled(plugin)
+                    MessageKey formatKey = pluginManager.isPluginEnabled(pluginContainer)
                             ? MessageKey.PLUGINS_FORMAT
                             : MessageKey.PLUGINS_FORMAT_DISABLED;
                     formatBuilder.append(messages.get(formatKey).toComponent(

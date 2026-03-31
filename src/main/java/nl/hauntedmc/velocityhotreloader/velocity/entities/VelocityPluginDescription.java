@@ -7,10 +7,8 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPluginDescription;
-import nl.hauntedmc.velocityhotreloader.common.entities.exceptions.InvalidPluginDescriptionException;
 
-public class VelocityPluginDescription implements VHRPluginDescription {
+public class VelocityPluginDescription {
 
     private final PluginDescription description;
     private final File file;
@@ -35,32 +33,26 @@ public class VelocityPluginDescription implements VHRPluginDescription {
                 .collect(Collectors.toSet());
     }
 
-    @Override
     public String getId() {
         return this.description.getId();
     }
 
-    @Override
     public String getName() {
         return this.description.getName().orElse("<UNKNOWN>");
     }
 
-    @Override
     public String getVersion() {
         return this.description.getVersion().orElse("<UNKNOWN>");
     }
 
-    @Override
     public String getAuthor() {
         return this.author;
     }
 
-    @Override
     public File getFile() {
         return this.file;
     }
 
-    @Override
     public Set<String> getDependencies() {
         return this.dependencies;
     }

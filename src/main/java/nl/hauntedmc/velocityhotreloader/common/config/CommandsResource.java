@@ -3,7 +3,7 @@ package nl.hauntedmc.velocityhotreloader.common.config;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
 
 /**
  * The Commands configuration.
@@ -12,7 +12,7 @@ public class CommandsResource extends VHRResource {
 
     private static final String COMMANDS_RESOURCE = "commands";
 
-    public CommandsResource(VHRPlugin<?, ?, ?, ?, ?> plugin) {
+    public CommandsResource(VHR plugin) {
         super(plugin, COMMANDS_RESOURCE);
     }
 

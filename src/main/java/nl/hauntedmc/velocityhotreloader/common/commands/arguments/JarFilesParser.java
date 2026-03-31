@@ -1,10 +1,8 @@
 package nl.hauntedmc.velocityhotreloader.common.commands.arguments;
 
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
-
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
+import nl.hauntedmc.velocityhotreloader.velocity.entities.VelocityAudience;
 import org.checkerframework.checker.nullness.qual.NonNull;
-
 import org.incendo.cloud.context.CommandContext;
 import org.incendo.cloud.context.CommandInput;
 import org.incendo.cloud.parser.ArgumentParseResult;
@@ -19,24 +17,27 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class JarFilesParser<C extends VHRAudience<?>> implements ArgumentParser<C, File[]>, BlockingSuggestionProvider.Strings<C> {
+public class JarFilesParser implements
+        ArgumentParser<VelocityAudience, File[]>,
+        BlockingSuggestionProvider.Strings<VelocityAudience> {
 
     private static final File[] EMPTY = new File[0];
 
 
-    private final VHRPlugin<?, ?, C, ?, ?> plugin;
+    private final VHR plugin;
 
-    public JarFilesParser(VHRPlugin<?, ?, C, ?, ?> plugin) {
+    public JarFilesParser(VHR plugin) {
         this.plugin = plugin;
     }
 
-    public static <C extends VHRAudience<?>> ParserDescriptor<C, File[]> jarFilesParser(VHRPlugin<?, ?, C, ?, ?> plugin) {
-        return ParserDescriptor.of(new JarFilesParser<>(plugin), File[].class);
+    public static ParserDescriptor<VelocityAudience, File[]> jarFilesParser(VHR plugin) {
+        return ParserDescriptor.of(new JarFilesParser(plugin), File[].class);
     }
 
 
     @Override
-    public @NonNull ArgumentParseResult<File @NonNull []> parse(@NonNull CommandContext<@NonNull C> commandContext,
+    public @NonNull ArgumentParseResult<File @NonNull []> parse(
+                                                                @NonNull CommandContext<@NonNull VelocityAudience> commandContext,
                                                                 @NonNull CommandInput commandInput) {
         if (!commandInput.hasRemainingInput()) {
             return ArgumentParseResult.success(EMPTY);
@@ -66,7 +67,8 @@ public class JarFilesParser<C extends VHRAudience<?>> implements ArgumentParser<
     }
 
     @Override
-    public @NonNull Iterable<@NonNull String> stringSuggestions(@NonNull CommandContext<C> commandContext,
+    public @NonNull Iterable<@NonNull String> stringSuggestions(
+                                                                @NonNull CommandContext<VelocityAudience> commandContext,
                                                                 @NonNull CommandInput input) {
         return this.plugin.getPluginManager().getPluginFileNames();
     }

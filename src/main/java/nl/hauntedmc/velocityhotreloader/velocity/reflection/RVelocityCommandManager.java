@@ -116,7 +116,7 @@ public class RVelocityCommandManager {
                 }
             }
 
-            VHR.getInstance().getLogger().warn(
+            VHR.getInstance().getSlf4jLogger().warn(
                     "Couldn't find the registering plugin for the following aliases: {}",
                     commandMeta.getAliases()
             );

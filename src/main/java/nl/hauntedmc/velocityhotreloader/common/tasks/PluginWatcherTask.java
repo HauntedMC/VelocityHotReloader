@@ -1,17 +1,19 @@
 package nl.hauntedmc.velocityhotreloader.common.tasks;
 
 import com.sun.nio.file.SensitivityWatchEventModifier;
+import com.velocitypowered.api.plugin.PluginContainer;
+import com.velocitypowered.api.scheduler.ScheduledTask;
 import nl.hauntedmc.velocityhotreloader.common.config.MessageKey;
 import nl.hauntedmc.velocityhotreloader.common.entities.AbstractTask;
 import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPluginDescription;
 import nl.hauntedmc.velocityhotreloader.common.entities.exceptions.InvalidPluginDescriptionException;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.PluginResult;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.PluginResults;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.WatchResult;
-import nl.hauntedmc.velocityhotreloader.common.managers.AbstractPluginManager;
 import nl.hauntedmc.velocityhotreloader.common.utils.FileUtils;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
+import nl.hauntedmc.velocityhotreloader.velocity.entities.VelocityPluginDescription;
+import nl.hauntedmc.velocityhotreloader.velocity.managers.VelocityPluginManager;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 
@@ -32,7 +34,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class PluginWatcherTask<P, T> extends AbstractTask {
+public class PluginWatcherTask extends AbstractTask {
 
     private static final WatchEvent.Kind<?>[] EVENTS = new WatchEvent.Kind[]{
         StandardWatchEventKinds.ENTRY_CREATE,
@@ -40,26 +42,26 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
         StandardWatchEventKinds.ENTRY_DELETE
     };
 
-    private final VHRPlugin<P, T, ?, ?, ?> plugin;
+    private final VHR plugin;
     private final VHRAudience<?> sender;
     private final Map<String, WatchEntry> fileNameToWatchEntryMap;
     private final Map<String, WatchEntry> pluginIdToWatchEntryMap;
 
     private final AtomicBoolean run = new AtomicBoolean(true);
     private WatchService watchService;
-    private T task = null;
+    private ScheduledTask task = null;
 
     /**
      * Constructs a new PluginWatcherTask for the specified plugin.
      */
-    public PluginWatcherTask(VHRPlugin<P, T, ?, ?, ?> plugin, VHRAudience<?> sender, List<P> plugins) {
+    public PluginWatcherTask(VHR plugin, VHRAudience<?> sender, List<PluginContainer> plugins) {
         this.plugin = plugin;
         this.sender = sender;
         this.fileNameToWatchEntryMap = new HashMap<>();
         this.pluginIdToWatchEntryMap = new HashMap<>();
 
-        AbstractPluginManager<P, ?> pluginManager = plugin.getPluginManager();
-        for (P watchPlugin : plugins) {
+        VelocityPluginManager pluginManager = plugin.getPluginManager();
+        for (PluginContainer watchPlugin : plugins) {
             File file = pluginManager.getPluginFile(watchPlugin);
 
             WatchEntry entry = new WatchEntry(pluginManager.getPluginId(watchPlugin));
@@ -74,7 +76,7 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
         try (WatchService watchService = FileSystems.getDefault().newWatchService()) {
             this.watchService = watchService;
 
-            AbstractPluginManager<P, ?> pluginManager = plugin.getPluginManager();
+            VelocityPluginManager pluginManager = plugin.getPluginManager();
             Path basePath = pluginManager.getPluginsFolder().toPath();
             basePath.register(watchService, EVENTS, SensitivityWatchEventModifier.HIGH);
 
@@ -107,7 +109,7 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
         WatchEntry entry = fileNameToWatchEntryMap.get(fileName);
 
         if (entry == null && Files.exists(path)) {
-            Optional<? extends VHRPluginDescription> descriptionOptional;
+            Optional<VelocityPluginDescription> descriptionOptional;
             try {
                 descriptionOptional = plugin.getPluginManager().getPluginDescription(path.toFile());
             } catch (InvalidPluginDescriptionException ignored) {
@@ -115,7 +117,7 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
             }
 
             if (descriptionOptional.isPresent()) {
-                VHRPluginDescription description = descriptionOptional.get();
+                VelocityPluginDescription description = descriptionOptional.get();
                 WatchEntry foundEntry = pluginIdToWatchEntryMap.remove(description.getId());
                 if (foundEntry != null) {
                     send(WatchResult.DELETED_FILE_IS_CREATED, Placeholder.unparsed("plugin", foundEntry.pluginId));
@@ -138,7 +140,7 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
             plugin.getTaskManager().cancelTask(task);
         }
 
-        AbstractPluginManager<P, ?> pluginManager = plugin.getPluginManager();
+        VelocityPluginManager pluginManager = plugin.getPluginManager();
         Optional<File> fileOptional = pluginManager.getPluginFile(entry.pluginId);
         if (!fileOptional.isPresent()) {
             send(WatchResult.FILE_DELETED, Placeholder.unparsed("plugin", entry.pluginId));
@@ -156,10 +158,10 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
             if (entry.hash.equals(previousHash) || previousTimestamp < entry.timestamp - 1000L) {
                 send(WatchResult.CHANGE);
 
-                List<P> plugins = new ArrayList<>(fileNameToWatchEntryMap.size());
+                List<PluginContainer> plugins = new ArrayList<>(fileNameToWatchEntryMap.size());
                 Map<String, WatchEntry> retainedWatchEntries = new HashMap<>();
                 for (WatchEntry oldEntry : fileNameToWatchEntryMap.values()) {
-                    Optional<P> pluginOptional = pluginManager.getPlugin(oldEntry.pluginId);
+                    Optional<PluginContainer> pluginOptional = pluginManager.getPlugin(oldEntry.pluginId);
                     if (!pluginOptional.isPresent()) continue;
 
                     plugins.add(pluginOptional.get());
@@ -168,13 +170,13 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
 
                 fileNameToWatchEntryMap.clear();
 
-                PluginResults<P> reloadResults = pluginManager.reloadPlugins(plugins);
+                PluginResults<PluginContainer> reloadResults = pluginManager.reloadPlugins(plugins);
                 reloadResults.sendTo(sender, MessageKey.RELOADPLUGIN_SUCCESS);
 
-                for (PluginResult<P> reloadResult : reloadResults) {
+                for (PluginResult<PluginContainer> reloadResult : reloadResults) {
                     if (!reloadResult.isSuccess()) continue;
 
-                    P reloadedPlugin = reloadResult.getPlugin();
+                    PluginContainer reloadedPlugin = reloadResult.getPlugin();
                     String pluginId = pluginManager.getPluginId(reloadedPlugin);
 
                     WatchEntry retainedEntry = retainedWatchEntries.get(pluginId);

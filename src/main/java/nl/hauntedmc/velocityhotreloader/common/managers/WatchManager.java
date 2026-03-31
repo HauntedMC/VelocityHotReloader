@@ -1,23 +1,24 @@
 package nl.hauntedmc.velocityhotreloader.common.managers;
 
+import com.velocitypowered.api.plugin.PluginContainer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.PluginWatchResults;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.WatchResult;
 import nl.hauntedmc.velocityhotreloader.common.tasks.PluginWatcherTask;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
-public class WatchManager<P, T> {
+public class WatchManager {
 
-    private final VHRPlugin<P, T, ?, ?, ?> plugin;
+    private final VHR plugin;
     private final Map<String, WatchTask> watchTasks;
 
-    public WatchManager(VHRPlugin<P, T, ?, ?, ?> plugin) {
+    public WatchManager(VHR plugin) {
         this.plugin = plugin;
         this.watchTasks = new HashMap<>();
     }
@@ -25,9 +26,9 @@ public class WatchManager<P, T> {
     /**
      * Starts watching the specified plugin and reloads it when a change is detected.
      */
-    public PluginWatchResults watchPlugins(VHRAudience<?> sender, List<P> plugins) {
+    public PluginWatchResults watchPlugins(VHRAudience<?> sender, List<PluginContainer> plugins) {
         List<String> pluginIds = new ArrayList<>(plugins.size());
-        for (P watchPlugin : plugins) {
+        for (PluginContainer watchPlugin : plugins) {
             String pluginId = plugin.getPluginManager().getPluginId(watchPlugin);
             if (watchTasks.containsKey(pluginId)) {
                 return new PluginWatchResults().add(WatchResult.ALREADY_WATCHING, Placeholder.unparsed("plugin", pluginId));
@@ -39,7 +40,7 @@ public class WatchManager<P, T> {
         UUID key = UUID.randomUUID();
         plugin.getTaskManager().runTaskAsynchronously(
                 key.toString(),
-                new PluginWatcherTask<>(plugin, sender, plugins)
+                new PluginWatcherTask(plugin, sender, plugins)
         );
 
         WatchTask watchTask = new WatchTask(key, pluginIds);

@@ -21,16 +21,26 @@ import com.velocitypowered.api.scheduler.ScheduledTask;
 import java.io.Closeable;
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import nl.hauntedmc.velocityhotreloader.common.entities.results.CloseablePluginResult;
 import nl.hauntedmc.velocityhotreloader.common.entities.exceptions.InvalidPluginDescriptionException;
+import nl.hauntedmc.velocityhotreloader.common.entities.results.PluginResult;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.CloseablePluginResults;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.PluginResults;
 import nl.hauntedmc.velocityhotreloader.common.entities.results.Result;
-import nl.hauntedmc.velocityhotreloader.common.managers.AbstractPluginManager;
+import nl.hauntedmc.velocityhotreloader.common.utils.DependencyUtils;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
 import nl.hauntedmc.velocityhotreloader.velocity.entities.VelocityPluginDescription;
 import nl.hauntedmc.velocityhotreloader.velocity.events.VelocityPluginDisableEvent;
 import nl.hauntedmc.velocityhotreloader.velocity.events.VelocityPluginEnableEvent;
@@ -47,7 +57,7 @@ import nl.hauntedmc.velocityhotreloader.velocity.reflection.RVelocityScheduler;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.slf4j.Logger;
 
-public class VelocityPluginManager extends AbstractPluginManager<PluginContainer, VelocityPluginDescription> {
+public class VelocityPluginManager {
 
     private static VelocityPluginManager instance;
     private final ProxyServer proxy;
@@ -68,7 +78,364 @@ public class VelocityPluginManager extends AbstractPluginManager<PluginContainer
         return instance;
     }
 
-    @Override
+    public File getPluginsFolder() {
+        return VHR.getInstance().getDataFolder().getParentFile();
+    }
+
+    public List<PluginContainer> getPlugins() {
+        return new ArrayList<>(proxy.getPluginManager().getPlugins());
+    }
+
+    public List<PluginContainer> getPluginsSorted() {
+        List<PluginContainer> plugins = getPlugins();
+        plugins.sort(Comparator.comparing(this::getPluginId));
+        return plugins;
+    }
+
+    public List<String> getPluginNames() {
+        return getPlugins().stream()
+                .map(this::getPluginId)
+                .collect(Collectors.toList());
+    }
+
+    public String getPluginId(PluginContainer plugin) {
+        return plugin.getDescription().getId();
+    }
+
+    public File getPluginFile(PluginContainer plugin) {
+        return plugin.getDescription().getSource()
+                .map(Path::toFile)
+                .orElse(null);
+    }
+
+    public Optional<File> getPluginFile(String pluginName) {
+        Object javaPluginLoader = RJavaPluginLoader.newInstance(instance.proxy, getPluginsFolder().toPath());
+
+        for (File file : getPluginJars()) {
+            PluginDescription desc = RJavaPluginLoader.loadPluginDescription(javaPluginLoader, file.toPath());
+            if (desc.getId().equals(pluginName)) {
+                return Optional.of(file);
+            }
+        }
+        return Optional.empty();
+    }
+
+    public Optional<PluginContainer> getPlugin(String pluginName) {
+        return proxy.getPluginManager().getPlugin(pluginName);
+    }
+
+    public List<PluginContainer> getPluginsDependingOn(String pluginId) {
+        List<PluginContainer> plugins = new ArrayList<>();
+        for (PluginContainer loadedPlugin : getPlugins()) {
+            VelocityPluginDescription description = getLoadedPluginDescription(loadedPlugin);
+            if (description.getDependencies().contains(pluginId)) {
+                plugins.add(loadedPlugin);
+            }
+        }
+        return plugins;
+    }
+
+    public VelocityPluginDescription getLoadedPluginDescription(PluginContainer plugin) {
+        return new VelocityPluginDescription(plugin.getDescription());
+    }
+
+    public Optional<VelocityPluginDescription> getPluginDescription(
+            String pluginId
+    ) throws InvalidPluginDescriptionException {
+        Optional<File> fileOptional = getPluginFile(pluginId);
+        return fileOptional.isPresent() ? getPluginDescription(fileOptional.get()) : Optional.empty();
+    }
+
+    public Optional<VelocityPluginDescription> getPluginDescription(
+            File file
+    ) throws InvalidPluginDescriptionException {
+        Path source = file.toPath();
+        Path baseDirectory = source.getParent();
+
+        try {
+            Object javaPluginLoader = RJavaPluginLoader.newInstance(proxy, baseDirectory);
+            PluginDescription candidate = RJavaPluginLoader.loadPluginDescription(javaPluginLoader, source);
+            return Optional.of(new VelocityPluginDescription(candidate));
+        } catch (Exception ex) {
+            throw new InvalidPluginDescriptionException(ex);
+        }
+    }
+
+    public Object getInstance(PluginContainer plugin) {
+        return plugin.getInstance().orElse(null);
+    }
+
+    public Set<String> getCommands() {
+        return RVelocityCommandManager.getDispatcher(proxy.getCommandManager()).getRoot().getChildren().stream()
+                .map(CommandNode::getName)
+                .collect(Collectors.toSet());
+    }
+
+    public File[] getPluginJars() {
+        File parent = getPluginsFolder();
+        if (parent == null || !parent.exists()) {
+            return new File[0];
+        }
+
+        File[] files = parent.listFiles(f -> f.getName().endsWith(".jar"));
+        return files != null ? files : new File[0];
+    }
+
+    public List<String> getPluginFileNames() {
+        return Arrays.stream(getPluginJars())
+                .map(File::getName)
+                .collect(Collectors.toList());
+    }
+
+    public PluginResult<PluginContainer> loadPlugin(String pluginFile) {
+        File file = new File(getPluginsFolder(), pluginFile);
+        if (!file.exists()) {
+            return new PluginResult<>(pluginFile, Result.NOT_EXISTS);
+        }
+        return loadPlugin(file);
+    }
+
+    public PluginResult<PluginContainer> loadPlugin(File file) {
+        return loadPlugins(Collections.singletonList(file)).first();
+    }
+
+    public PluginResults<PluginContainer> loadPlugins(List<File> files) {
+        List<VelocityPluginDescription> descriptions = new ArrayList<>(files.size());
+
+        for (File file : files) {
+            VelocityPluginDescription description;
+            try {
+                Optional<VelocityPluginDescription> descriptionOptional = getPluginDescription(file);
+                if (!descriptionOptional.isPresent()) {
+                    return new PluginResults<PluginContainer>().addResult(file.getName(), Result.NOT_EXISTS);
+                }
+
+                description = descriptionOptional.get();
+            } catch (InvalidPluginDescriptionException ex) {
+                ex.printStackTrace();
+                return new PluginResults<PluginContainer>().addResult(file.getName(), Result.INVALID_DESCRIPTION);
+            }
+
+            if (getPlugin(description.getId()).isPresent()) {
+                return new PluginResults<PluginContainer>().addResult(description.getId(), Result.ALREADY_LOADED);
+            }
+
+            descriptions.add(description);
+        }
+
+        List<VelocityPluginDescription> orderedDescriptions;
+        try {
+            orderedDescriptions = determineLoadOrder(descriptions);
+        } catch (IllegalStateException ex) {
+            ex.printStackTrace();
+
+            StringBuilder sb = new StringBuilder();
+            for (File file : files) {
+                sb.append(", ").append(file.getName());
+            }
+
+            return new PluginResults<PluginContainer>().addResult(sb.substring(2), Result.ERROR);
+        }
+
+        return loadPluginDescriptions(orderedDescriptions);
+    }
+
+    public PluginResult<PluginContainer> enablePlugin(String pluginId) {
+        return getPlugin(pluginId)
+                .map(this::enablePlugin)
+                .orElse(new PluginResult<>(pluginId, Result.NOT_EXISTS));
+    }
+
+    public PluginResult<PluginContainer> enablePlugin(PluginContainer plugin) {
+        return enablePlugins(Collections.singletonList(plugin)).first();
+    }
+
+    public PluginResults<PluginContainer> enablePlugins(List<PluginContainer> plugins) {
+        Optional<PluginContainer> pluginOptional = checkPluginStates(plugins, false);
+        if (pluginOptional.isPresent()) {
+            return new PluginResults<PluginContainer>().addResult(getPluginId(pluginOptional.get()), Result.ALREADY_ENABLED);
+        }
+
+        return enableOrderedPlugins(determineLoadOrder(plugins));
+    }
+
+    public boolean isPluginEnabled(PluginContainer plugin) {
+        return isPluginEnabled(getPluginId(plugin));
+    }
+
+    public boolean isPluginEnabled(String pluginId) {
+        return proxy.getPluginManager().isLoaded(pluginId);
+    }
+
+    protected Optional<PluginContainer> checkPluginStates(List<PluginContainer> plugins, boolean enabled) {
+        for (PluginContainer plugin : plugins) {
+            if (isPluginEnabled(plugin) != enabled) {
+                return Optional.of(plugin);
+            }
+        }
+        return Optional.empty();
+    }
+
+    public PluginResult<PluginContainer> disablePlugin(String pluginId) {
+        return getPlugin(pluginId)
+                .map(this::disablePlugin)
+                .orElse(new PluginResult<>(pluginId, Result.NOT_EXISTS));
+    }
+
+    public PluginResult<PluginContainer> disablePlugin(PluginContainer plugin) {
+        return disablePlugins(Collections.singletonList(plugin)).first();
+    }
+
+    public PluginResults<PluginContainer> disablePlugins(List<PluginContainer> plugins) {
+        Optional<PluginContainer> pluginOptional = checkPluginStates(plugins, true);
+        if (pluginOptional.isPresent()) {
+            return new PluginResults<PluginContainer>().addResult(getPluginId(pluginOptional.get()), Result.ALREADY_DISABLED);
+        }
+
+        List<PluginContainer> orderedPlugins;
+        try {
+            orderedPlugins = determineLoadOrder(plugins);
+        } catch (IllegalStateException ex) {
+            ex.printStackTrace();
+
+            StringBuilder sb = new StringBuilder();
+            for (PluginContainer plugin : plugins) {
+                sb.append(", ").append(getPluginId(plugin));
+            }
+
+            return new PluginResults<PluginContainer>().addResult(sb.substring(2), Result.ERROR);
+        }
+
+        Collections.reverse(orderedPlugins);
+        return disableOrderedPlugins(orderedPlugins);
+    }
+
+    public PluginResult<PluginContainer> reloadPlugin(String pluginId) {
+        return getPlugin(pluginId)
+                .map(this::reloadPlugin)
+                .orElse(new PluginResult<>(pluginId, Result.NOT_EXISTS));
+    }
+
+    public PluginResult<PluginContainer> reloadPlugin(PluginContainer plugin) {
+        return reloadPlugins(Collections.singletonList(plugin)).first();
+    }
+
+    public PluginResults<PluginContainer> reloadPlugins(List<PluginContainer> plugins) {
+        PluginResults<PluginContainer> disableResults = disablePlugins(plugins);
+        for (PluginResult<PluginContainer> disableResult : disableResults.getResults()) {
+            if (!disableResult.isSuccess() && disableResult.getResult() != Result.ALREADY_DISABLED) {
+                return disableResults;
+            }
+        }
+
+        List<String> pluginIds = new ArrayList<>(plugins.size());
+        for (PluginContainer plugin : plugins) {
+            pluginIds.add(getPluginId(plugin));
+        }
+
+        CloseablePluginResults<PluginContainer> unloadResults = unloadPlugins(plugins);
+        if (!unloadResults.isSuccess()) {
+            return unloadResults;
+        }
+        unloadResults.tryClose();
+
+        List<File> pluginFiles = new ArrayList<>(plugins.size());
+        for (String pluginId : pluginIds) {
+            Optional<File> pluginFile = getPluginFile(pluginId);
+            if (!pluginFile.isPresent()) {
+                return new PluginResults<PluginContainer>().addResult(pluginId, Result.FILE_DELETED);
+            }
+            pluginFiles.add(pluginFile.get());
+        }
+
+        PluginResults<PluginContainer> loadResults = loadPlugins(pluginFiles);
+        if (!loadResults.isSuccess()) {
+            return loadResults;
+        }
+
+        List<PluginContainer> loadedPlugins = new ArrayList<>(pluginIds.size());
+        for (PluginResult<PluginContainer> loadResult : loadResults) {
+            loadedPlugins.add(loadResult.getPlugin());
+        }
+
+        return enablePlugins(loadedPlugins);
+    }
+
+    public CloseablePluginResult<PluginContainer> unloadPlugin(String pluginId) {
+        return getPlugin(pluginId)
+                .map(this::unloadPlugin)
+                .orElse(new CloseablePluginResult<>(pluginId, Result.NOT_EXISTS));
+    }
+
+    public CloseablePluginResult<PluginContainer> unloadPlugin(PluginContainer plugin) {
+        return unloadPlugins(Collections.singletonList(plugin)).first();
+    }
+
+    public CloseablePluginResults<PluginContainer> unloadPlugins(List<PluginContainer> plugins) {
+        List<PluginContainer> orderedPlugins;
+        try {
+            orderedPlugins = determineLoadOrder(plugins);
+        } catch (IllegalStateException ex) {
+            ex.printStackTrace();
+
+            StringBuilder sb = new StringBuilder();
+            for (PluginContainer plugin : plugins) {
+                sb.append(", ").append(getPluginId(plugin));
+            }
+
+            return new CloseablePluginResults<PluginContainer>().addResult(sb.substring(2), Result.ERROR);
+        }
+
+        Collections.reverse(orderedPlugins);
+        return unloadOrderedPlugins(orderedPlugins);
+    }
+
+    /**
+     * Determines the load order of a list of plugins.
+     */
+    public List<PluginContainer> determineLoadOrder(List<PluginContainer> plugins) throws IllegalStateException {
+        Map<VelocityPluginDescription, PluginContainer> descriptionMap = new HashMap<>(plugins.size());
+        for (PluginContainer plugin : plugins) {
+            descriptionMap.put(getLoadedPluginDescription(plugin), plugin);
+        }
+
+        List<PluginContainer> orderedPlugins = new ArrayList<>(plugins.size());
+        for (VelocityPluginDescription description : determineLoadOrder(descriptionMap.keySet())) {
+            orderedPlugins.add(descriptionMap.get(description));
+        }
+        return orderedPlugins;
+    }
+
+    /**
+     * Determines the load order for a given collection of descriptions.
+     * @throws IllegalStateException iff circular dependency
+     */
+    public List<VelocityPluginDescription> determineLoadOrder(
+            Collection<? extends VelocityPluginDescription> descriptions
+    ) throws IllegalStateException {
+        Map<String, VelocityPluginDescription> pluginIdToDescriptionMap = new HashMap<>();
+        for (VelocityPluginDescription description : descriptions) {
+            pluginIdToDescriptionMap.put(description.getId(), description);
+        }
+
+        Map<VelocityPluginDescription, Set<VelocityPluginDescription>> dependencyMap = new HashMap<>(descriptions.size());
+        for (VelocityPluginDescription description : descriptions) {
+            Set<String> dependencyStrings = description.getDependencies();
+            Set<VelocityPluginDescription> dependencies = new HashSet<>();
+
+            for (String dependencyString : dependencyStrings) {
+                VelocityPluginDescription dependency = pluginIdToDescriptionMap.get(dependencyString);
+                if (dependency != null) {
+                    dependencies.add(dependency);
+                }
+            }
+
+            dependencyMap.put(description, dependencies);
+        }
+
+        return DependencyUtils.determineOrder(dependencyMap);
+    }
+
     public PluginResults<PluginContainer> loadPluginDescriptions(List<VelocityPluginDescription> descriptions) {
         PluginResults<PluginContainer> loadResults = new PluginResults<>();
 
@@ -109,7 +476,6 @@ public class VelocityPluginManager extends AbstractPluginManager<PluginContainer
         return loadResults;
     }
 
-    @Override
     public PluginResults<PluginContainer> enableOrderedPlugins(List<PluginContainer> containers) {
         PluginResults<PluginContainer> enableResults = new PluginResults<>();
 
@@ -211,12 +577,6 @@ public class VelocityPluginManager extends AbstractPluginManager<PluginContainer
         return enableResults;
     }
 
-    @Override
-    public boolean isPluginEnabled(String pluginId) {
-        return proxy.getPluginManager().isLoaded(pluginId);
-    }
-
-    @Override
     public PluginResults<PluginContainer> disableOrderedPlugins(List<PluginContainer> containers) {
         PluginResults<PluginContainer> disableResults = new PluginResults<>();
 
@@ -246,7 +606,6 @@ public class VelocityPluginManager extends AbstractPluginManager<PluginContainer
         return disableResults;
     }
 
-    @Override
     public CloseablePluginResults<PluginContainer> unloadOrderedPlugins(List<PluginContainer> containers) {
         CloseablePluginResults<PluginContainer> unloadResults = new CloseablePluginResults<>();
 
@@ -285,74 +644,5 @@ public class VelocityPluginManager extends AbstractPluginManager<PluginContainer
         }
 
         return unloadResults;
-    }
-
-    @Override
-    public List<PluginContainer> getPlugins() {
-        return new ArrayList<>(proxy.getPluginManager().getPlugins());
-    }
-
-    @Override
-    public String getPluginId(PluginContainer plugin) {
-        return plugin.getDescription().getId();
-    }
-
-    @Override
-    public File getPluginFile(PluginContainer plugin) {
-        return plugin.getDescription().getSource()
-                .map(Path::toFile)
-                .orElse(null);
-    }
-
-    @Override
-    public Optional<File> getPluginFile(String pluginName) {
-        Object javaPluginLoader = RJavaPluginLoader.newInstance(instance.proxy, getPluginsFolder().toPath());
-
-        for (File file : getPluginJars()) {
-            PluginDescription desc = RJavaPluginLoader.loadPluginDescription(javaPluginLoader, file.toPath());
-
-            if (desc.getId().equals(pluginName)) {
-                return Optional.of(file);
-            }
-        }
-        return Optional.empty();
-    }
-
-    @Override
-    public Optional<PluginContainer> getPlugin(String pluginName) {
-        return proxy.getPluginManager().getPlugin(pluginName);
-    }
-
-    @Override
-    public VelocityPluginDescription getLoadedPluginDescription(PluginContainer plugin) {
-        return new VelocityPluginDescription(plugin.getDescription());
-    }
-
-    @Override
-    public Optional<VelocityPluginDescription> getPluginDescription(
-            File file
-    ) throws InvalidPluginDescriptionException {
-        Path source = file.toPath();
-        Path baseDirectory = source.getParent();
-
-        try {
-            Object javaPluginLoader = RJavaPluginLoader.newInstance(proxy, baseDirectory);
-            PluginDescription candidate = RJavaPluginLoader.loadPluginDescription(javaPluginLoader, source);
-            return Optional.of(new VelocityPluginDescription(candidate));
-        } catch (Exception ex) {
-            throw new InvalidPluginDescriptionException(ex);
-        }
-    }
-
-    @Override
-    public Object getInstance(PluginContainer plugin) {
-        return plugin.getInstance().orElse(null);
-    }
-
-    @Override
-    public Set<String> getCommands() {
-        return RVelocityCommandManager.getDispatcher(proxy.getCommandManager()).getRoot().getChildren().stream()
-                .map(CommandNode::getName)
-                .collect(Collectors.toSet());
     }
 }

@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import nl.hauntedmc.velocityhotreloader.common.entities.VHRAudience;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
+import nl.hauntedmc.velocityhotreloader.velocity.VHR;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.TagPattern;
@@ -21,7 +21,7 @@ public class MessagesResource extends VHRResource {
     /**
      * Constructs a new MessagesResource.
      */
-    public MessagesResource(VHRPlugin<?, ?, ?, ?, ?> plugin) {
+    public MessagesResource(VHR plugin) {
         super(plugin, MESSAGES_RESOURCE);
         this.messageMap = new HashMap<>();
         this.miniMessage = MiniMessage.miniMessage();

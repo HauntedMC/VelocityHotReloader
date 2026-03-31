@@ -15,9 +15,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import nl.hauntedmc.velocityhotreloader.common.entities.VHRPlugin;
 import nl.hauntedmc.velocityhotreloader.common.providers.ResourceProvider;
 
 public class JsonConfig implements VHRConfig {
@@ -39,19 +37,19 @@ public class JsonConfig implements VHRConfig {
     /**
      * Loads a resource from the jar file.
      */
-    public static JsonConfig load(ResourceProvider provider, VHRPlugin.Platform platform, String resourceName) {
-        // Create the platform JsonConfig by merging the platformConfig with the generalConfig
+    public static JsonConfig load(ResourceProvider provider, String resourceName) {
+        // Merge velocity overrides into the shared default config.
         JsonConfig generalConfig = new JsonConfig(JsonConfig.gson.fromJson(
                 new InputStreamReader(provider.getRawResource(resourceName + ".json")),
                 JsonObject.class
         ));
 
-        String platformResource = platform.name().toLowerCase(Locale.ENGLISH) + '-' + resourceName;
-        JsonConfig platformConfig = new JsonConfig(JsonConfig.gson.fromJson(
-                new InputStreamReader(provider.getRawResource(platformResource + ".json")),
+        String velocityResource = "velocity-" + resourceName;
+        JsonConfig velocityConfig = new JsonConfig(JsonConfig.gson.fromJson(
+                new InputStreamReader(provider.getRawResource(velocityResource + ".json")),
                 JsonObject.class
         ));
-        VHRConfig.addDefaults(platformConfig, generalConfig);
+        VHRConfig.addDefaults(velocityConfig, generalConfig);
 
         return generalConfig;
     }
