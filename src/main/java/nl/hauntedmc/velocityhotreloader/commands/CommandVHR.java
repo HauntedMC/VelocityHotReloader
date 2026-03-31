@@ -664,7 +664,7 @@ public class CommandVHR {
     }
 
     private CompletableFuture<Suggestions> suggestSimple(SuggestionsBuilder builder, Iterable<String> values) {
-        String remaining = builder.getRemainingLowerCase();
+        String remaining = builder.getRemaining().toLowerCase();
         for (String value : values) {
             String lower = value.toLowerCase(Locale.ROOT);
             if (lower.startsWith(remaining)) {

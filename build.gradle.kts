@@ -2,7 +2,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 plugins {
     java
-    id("io.github.goooler.shadow") version "8.1.8"
+    id("com.gradleup.shadow") version "8.3.10"
     id("net.kyori.blossom") version "2.2.0"
 }
 
@@ -34,11 +34,17 @@ dependencies {
     annotationProcessor("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
 }
 
-tasks {
-    blossom {
-        replaceToken("{version}", version, "src/main/java/nl/hauntedmc/velocityhotreloader/VelocityHotReloaded.java")
+sourceSets {
+    main {
+        blossom {
+            javaSources {
+                property("version", version.toString())
+            }
+        }
     }
+}
 
+tasks {
     build {
         dependsOn("shadowJar")
     }
