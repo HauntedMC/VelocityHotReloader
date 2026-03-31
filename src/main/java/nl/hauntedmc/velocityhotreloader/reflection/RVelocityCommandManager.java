@@ -11,17 +11,35 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
-import nl.hauntedmc.velocityhotreloader.utils.ReflectionUtils;
 import nl.hauntedmc.velocityhotreloader.VHR;
 
 public class RVelocityCommandManager {
 
+    private static final Class<?> VELOCITY_COMMAND_MANAGER_CLASS =
+            Reflect.classForName("com.velocitypowered.proxy.command.VelocityCommandManager");
+    private static final Class<?> COMMAND_REGISTRAR_CLASS =
+            Reflect.classForName("com.velocitypowered.proxy.command.registrar.CommandRegistrar");
+    private static final Field DISPATCHER_FIELD = Reflect.getAccessibleField(
+            VELOCITY_COMMAND_MANAGER_CLASS,
+            "dispatcher"
+    );
+    private static final Field REGISTRARS_FIELD = Reflect.getAccessibleField(
+            VELOCITY_COMMAND_MANAGER_CLASS,
+            "registrars"
+    );
+    private static final StackWalker STACK_WALKER =
+            StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+    private static final ClassLoader CURRENT_PLUGIN_CLASS_LOADER = RVelocityCommandManager.class.getClassLoader();
+
     private RVelocityCommandManager() {}
 
     public static CommandDispatcher<CommandSource> getDispatcher(CommandManager manager) {
-        return Reflect.getFieldValue(manager, "dispatcher");
+        return Reflect.getFieldValue(DISPATCHER_FIELD, manager);
     }
 
     /**
@@ -34,21 +52,12 @@ public class RVelocityCommandManager {
             BiConsumer<PluginContainer, CommandMeta> registrationConsumer
     ) {
         CommandManager commandManager = proxy.getCommandManager();
-        List<Object> proxiedRegistrars = new ArrayList<>();
-
-        Class<?> commandRegistrarClass;
-        try {
-            commandRegistrarClass = Class.forName("com.velocitypowered.proxy.command.registrar.CommandRegistrar");
-        } catch (ClassNotFoundException ex) {
-            VHR.getInstance().getSlf4jLogger().error("Unable to load Velocity command registrar class", ex);
-            return;
-        }
-
-        List<Object> registrars = Reflect.getFieldValue(commandManager, "registrars");
+        List<Object> registrars = Reflect.getFieldValue(REGISTRARS_FIELD, commandManager);
+        List<Object> proxiedRegistrars = new ArrayList<>(registrars.size());
         for (Object registrar : registrars) {
             proxiedRegistrars.add(Proxy.newProxyInstance(
                     loader,
-                    new Class<?>[]{ commandRegistrarClass },
+                    new Class<?>[]{ COMMAND_REGISTRAR_CLASS },
                     new CommandRegistrarInvocationHandler(
                             proxy,
                             registrar,
@@ -57,11 +66,8 @@ public class RVelocityCommandManager {
             ));
         }
 
-        Field registrarsField = Reflect.getAccessibleField(commandManager.getClass(), "registrars");
-        ReflectionUtils.doPrivilegedWithUnsafe(unsafe -> {
-            long offset = unsafe.objectFieldOffset(registrarsField);
-            unsafe.putObject(commandManager, offset, proxiedRegistrars);
-        });
+        // Velocity keeps this field final and immutable, so we replace it through Unsafe once at startup.
+        Reflect.putObjectFieldUnsafe(commandManager, REGISTRARS_FIELD, List.copyOf(proxiedRegistrars));
     }
 
     public static final class CommandRegistrarInvocationHandler implements InvocationHandler {
@@ -93,24 +99,25 @@ public class RVelocityCommandManager {
         }
 
         private void handleRegisterMethod(CommandMeta commandMeta) {
-            StackTraceElement[] elements = Thread.currentThread().getStackTrace();
-
-            // Skip the first four elements, which is our overhead here
-            for (int i = 4; i < elements.length; i++) {
-                Class<?> clazz;
-                try {
-                    clazz = Class.forName(elements[i].getClassName());
-                } catch (ClassNotFoundException ex) {
-                    continue;
+            Map<ClassLoader, PluginContainer> pluginsByLoader = new HashMap<>();
+            for (PluginContainer container : proxy.getPluginManager().getPlugins()) {
+                Object instance = container.getInstance().orElse(null);
+                if (instance != null) {
+                    pluginsByLoader.put(instance.getClass().getClassLoader(), container);
                 }
+            }
 
-                ClassLoader classLoader = clazz.getClassLoader();
-                for (PluginContainer container : proxy.getPluginManager().getPlugins()) {
-                    if (container.getInstance().filter(o -> o.getClass().getClassLoader() == classLoader).isPresent()) {
-                        registrationConsumer.accept(container, commandMeta);
-                        return;
-                    }
-                }
+            PluginContainer container = STACK_WALKER.walk(frames -> frames
+                    .map(frame -> frame.getDeclaringClass().getClassLoader())
+                    .filter(Objects::nonNull)
+                    .dropWhile(classLoader -> classLoader == CURRENT_PLUGIN_CLASS_LOADER)
+                    .map(pluginsByLoader::get)
+                    .filter(found -> found != null)
+                    .findFirst()
+                    .orElse(null));
+            if (container != null) {
+                registrationConsumer.accept(container, commandMeta);
+                return;
             }
 
             VHR.getInstance().getSlf4jLogger().warn(
