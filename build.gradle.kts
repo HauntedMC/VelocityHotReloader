@@ -47,7 +47,7 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.mockito:mockito-junit-jupiter:5.20.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.23.0")
     testImplementation("org.mockito:mockito-inline:5.2.0")
     testImplementation("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
     testImplementation("com.electronwill.night-config:toml:3.8.4")
