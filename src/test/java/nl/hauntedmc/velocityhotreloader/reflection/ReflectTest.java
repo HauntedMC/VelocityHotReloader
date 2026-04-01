@@ -106,10 +106,16 @@ class ReflectTest {
         }
     }
 
-    private record FinalHolder(Object value) {
+    private static final class FinalHolder {
+
+        private final Object value;
+
+        private FinalHolder(Object value) {
+            this.value = value;
+        }
 
         private Object read() {
-                return value;
-            }
+            return value;
         }
+    }
 }

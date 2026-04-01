@@ -1,7 +1,11 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.plugins.quality.Checkstyle
+import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     java
+    checkstyle
+    jacoco
     id("com.gradleup.shadow") version "8.3.10"
     id("net.kyori.blossom") version "2.2.0"
 }
@@ -11,9 +15,16 @@ val dependencyDir = "${group}.velocity.dependencies"
 version = "1.2.0"
 
 val javaVersion = 21
+val checkstyleVersion = "13.3.0"
 
 java {
     java.toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersion))
+}
+
+checkstyle {
+    toolVersion = checkstyleVersion
+    configFile = file("config/checkstyle/checkstyle.xml")
+    isShowViolations = true
 }
 
 repositories {
@@ -80,4 +91,18 @@ tasks.withType<ShadowJar> {
     archiveClassifier.set("")
     relocate("com.google.gson", "${dependencyDir}.gson")
     relocate("net.kyori.adventure.text.minimessage", "${dependencyDir}.adventure.text.minimessage")
+}
+
+tasks.withType<Checkstyle>().configureEach {
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+tasks.withType<JacocoReport>().configureEach {
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
 }
