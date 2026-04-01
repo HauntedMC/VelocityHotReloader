@@ -37,7 +37,8 @@ public class KeyValueComponentBuilder {
             @TagPattern String keyPlaceholder,
             String valuePlaceholder
     ) {
-        return new KeyValueComponentBuilder(format, keyPlaceholder, valuePlaceholder);
+        String valuePlaceholder1 = valuePlaceholder;
+        return new KeyValueComponentBuilder(format, keyPlaceholder, valuePlaceholder1);
     }
 
     public KeyValueComponentBuilder.KeyValuePair key(String key) {

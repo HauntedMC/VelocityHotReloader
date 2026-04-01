@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -143,7 +144,7 @@ public interface VHRConfig {
      */
     static void removeOldKeys(VHRConfig def, VHRConfig conf, String root) {
         if (def == null) return;
-        for (String key : conf.getKeys()) {
+        for (String key : new ArrayList<>(conf.getKeys())) {
             String defKey = (root.isEmpty() ? "" : root + ".") + key;
             Object value = conf.get(key);
             if (def.get(defKey) == null) {
@@ -182,6 +183,10 @@ public interface VHRConfig {
     ) {
         if (!Files.exists(path)) {
             try {
+                Path parent = path.getParent();
+                if (parent != null && Files.notExists(parent)) {
+                    Files.createDirectories(parent);
+                }
                 Files.createFile(path);
             } catch (IOException ex) {
                 throw new UncheckedIOException("Unable to create configuration file at " + path, ex);
