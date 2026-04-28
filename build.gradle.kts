@@ -38,7 +38,7 @@ dependencies {
     implementation("net.kyori:adventure-text-minimessage:5.0.1") {
         exclude("net.kyori", "adventure-api")
     }
-    implementation("com.google.code.gson:gson:2.13.2")
+    implementation("com.google.code.gson:gson:2.14.0")
     compileOnly("com.mojang:brigadier:1.0.500")
     compileOnly("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
     compileOnly("com.electronwill.night-config:toml:3.8.4")
