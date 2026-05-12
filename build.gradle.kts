@@ -35,7 +35,7 @@ repositories {
 }
 
 dependencies {
-    implementation("net.kyori:adventure-text-minimessage:5.0.1") {
+    implementation("net.kyori:adventure-text-minimessage:5.1.0") {
         exclude("net.kyori", "adventure-api")
     }
     implementation("com.google.code.gson:gson:2.14.0")
