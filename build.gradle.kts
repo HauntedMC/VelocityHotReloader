@@ -44,7 +44,7 @@ dependencies {
     compileOnly("com.electronwill.night-config:toml:3.9.0")
     annotationProcessor("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
 
-    testImplementation(platform("org.junit:junit-bom:6.1.0"))
+    testImplementation(platform("org.junit:junit-bom:6.1.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.mockito:mockito-junit-jupiter:5.23.0")
