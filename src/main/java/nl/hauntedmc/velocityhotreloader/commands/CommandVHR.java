@@ -386,7 +386,7 @@ public class CommandVHR {
                     .separator(messages.get(MessageKey.DEPENDING_PLUGINS_SEPARATOR).toComponent())
                     .lastSeparator(messages.get(MessageKey.DEPENDING_PLUGINS_LAST_SEPARATOR).toComponent())
                     .build());
-            sender.sendMessage(builder.build());
+            sender.sendMessage(builder.asComponent());
             hasDependingPlugins = true;
         }
 
@@ -546,10 +546,10 @@ public class CommandVHR {
                                 Placeholder.unparsed("version", description.getVersion())
                         ));
                     }
-                    return formatBuilder.build();
+                    return formatBuilder.asComponent();
                 })
                 .build());
-        sender.sendMessage(builder.build());
+        sender.sendMessage(builder.asComponent());
         sender.sendMessage(messages.get(MessageKey.PLUGINS_FOOTER).toComponent());
     }
 

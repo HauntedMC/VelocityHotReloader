@@ -75,7 +75,7 @@ public class ListComponentBuilder<T> {
                 }
             }
 
-            return builder.build();
+            return builder.asComponent();
         }
     }
 

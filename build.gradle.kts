@@ -14,7 +14,7 @@ group = "nl.hauntedmc.velocityhotreloader"
 val dependencyDir = "${group}.velocity.dependencies"
 version = "1.2.1"
 
-val javaVersion = 21
+val javaVersion = 25
 val checkstyleVersion = "13.3.0"
 
 java {
@@ -40,16 +40,16 @@ dependencies {
     }
     implementation("com.google.code.gson:gson:2.14.0")
     compileOnly("com.mojang:brigadier:1.0.500")
-    compileOnly("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-api:4.0.0-SNAPSHOT")
     compileOnly("com.electronwill.night-config:toml:3.9.0")
-    annotationProcessor("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:4.0.0-SNAPSHOT")
 
     testImplementation(platform("org.junit:junit-bom:6.1.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.mockito:mockito-junit-jupiter:5.23.0")
     testImplementation("org.mockito:mockito-inline:5.2.0")
-    testImplementation("com.velocitypowered:velocity-api:3.5.0-SNAPSHOT")
+    testImplementation("com.velocitypowered:velocity-api:4.0.0-SNAPSHOT")
     testImplementation("com.electronwill.night-config:toml:3.9.0")
 }
 
