@@ -6,7 +6,7 @@ plugins {
     java
     checkstyle
     jacoco
-    id("com.gradleup.shadow") version "9.6.0"
+    id("com.gradleup.shadow") version "9.6.1"
     id("net.kyori.blossom") version "2.2.0"
 }
 
