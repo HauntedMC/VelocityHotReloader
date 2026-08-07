@@ -636,8 +636,7 @@ public class VelocityPluginManager {
                 proxy.getCommandManager().unregister(alias);
             }
 
-            RVelocityPluginManager.getPlugins(proxy.getPluginManager()).remove(pluginId);
-            RVelocityPluginManager.getPluginInstances(proxy.getPluginManager()).remove(pluginInstance);
+            RVelocityPluginManager.unregisterPlugin(proxy.getPluginManager(), container);
 
             List<Closeable> closeables = new ArrayList<>();
 
