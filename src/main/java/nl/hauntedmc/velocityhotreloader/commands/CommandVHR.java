@@ -312,7 +312,10 @@ public class CommandVHR {
 
     private void handleRestart(VelocityAudience sender, boolean force, String rawInput) {
         List<PluginContainer> plugins = List.of(plugin.getPlugin());
-        checkDependingPlugins(sender, plugins, force, rawInput);
+        if (checkDependingPlugins(sender, plugins, force, rawInput)) {
+            return;
+        }
+        plugin.getPluginManager().reloadPlugins(plugins).sendTo(sender, MessageKey.RELOADPLUGIN_SUCCESS);
     }
 
     private void handleLoadPlugin(VelocityAudience sender, List<File> jarFiles) {

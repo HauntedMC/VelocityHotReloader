@@ -1,4 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.tasks.Exec
 import org.gradle.api.plugins.quality.Checkstyle
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
@@ -16,6 +17,10 @@ version = "1.2.4"
 
 val javaVersion = 25
 val checkstyleVersion = "13.3.0"
+val acceptanceCompileClasspath by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
 
 java {
     java.toolchain.languageVersion.set(JavaLanguageVersion.of(javaVersion))
@@ -43,6 +48,7 @@ dependencies {
     compileOnly("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
     compileOnly("com.electronwill.night-config:toml:3.9.0")
     annotationProcessor("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
+    acceptanceCompileClasspath("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
 
     testImplementation(platform("org.junit:junit-bom:6.1.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -104,5 +110,16 @@ tasks.withType<JacocoReport>().configureEach {
     reports {
         xml.required.set(true)
         html.required.set(true)
+    }
+}
+
+val acceptanceTest = tasks.register<Exec>("acceptanceTest") {
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    description = "Boots Velocity and verifies VHR against temporary plugins."
+    dependsOn(tasks.named<ShadowJar>("shadowJar"))
+    commandLine("bash", "src/acceptance/run-acceptance.sh")
+    doFirst {
+        environment("VHR_ARTIFACT", tasks.named<ShadowJar>("shadowJar").get().archiveFile.get().asFile.absolutePath)
+        environment("VHR_VELOCITY_API_CLASSPATH", acceptanceCompileClasspath.asPath)
     }
 }

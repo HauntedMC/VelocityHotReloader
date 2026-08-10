@@ -14,6 +14,7 @@ Useful commands during development:
 ./gradlew test
 ./gradlew checkstyleMain checkstyleTest
 ./gradlew test jacocoTestReport
+./gradlew acceptanceTest
 ./gradlew build
 ```
 

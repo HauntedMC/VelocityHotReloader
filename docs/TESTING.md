@@ -24,6 +24,15 @@ Run full quality checks:
 ./gradlew check
 ```
 
+Run the Velocity platform acceptance suite:
+
+```bash
+./gradlew acceptanceTest
+```
+
+It downloads the pinned Velocity runtime, builds temporary sample plugins, and exercises VHR's commands,
+dependency protection, dynamic reload, file watcher, and self-restart.
+
 Run lint checks:
 
 ```bash
@@ -64,4 +73,5 @@ After `jacocoTestReport`:
 
 ## CI
 
-CI validates Checkstyle, tests, and coverage report generation on pull requests and `main` branch updates.
+CI validates Checkstyle, tests, coverage report generation, and the Velocity acceptance suite on pull requests and
+`main` branch updates.

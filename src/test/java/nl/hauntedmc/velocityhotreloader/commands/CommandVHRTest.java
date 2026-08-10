@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.mojang.brigadier.suggestion.Suggestion;
@@ -21,7 +22,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import nl.hauntedmc.velocityhotreloader.VelocityHotReloaded;
+import nl.hauntedmc.velocityhotreloader.entities.VelocityAudience;
 import nl.hauntedmc.velocityhotreloader.managers.VelocityPluginManager;
+import nl.hauntedmc.velocityhotreloader.entities.results.PluginResults;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,6 +32,7 @@ import org.junit.jupiter.api.io.TempDir;
 class CommandVHRTest {
 
     private VelocityPluginManager pluginManager;
+    private VelocityHotReloaded plugin;
     private CommandVHR command;
 
     @TempDir
@@ -36,7 +40,7 @@ class CommandVHRTest {
 
     @BeforeEach
     void setUp() {
-        VelocityHotReloaded plugin = mock(VelocityHotReloaded.class);
+        plugin = mock(VelocityHotReloaded.class);
         pluginManager = mock(VelocityPluginManager.class);
         when(plugin.getPluginManager()).thenReturn(pluginManager);
         command = new CommandVHR(plugin);
@@ -144,6 +148,26 @@ class CommandVHRTest {
 
         when(source.hasPermission("velocityhotreloader.reloadplugin")).thenReturn(true);
         assertTrue((boolean) invoke("hasRootPermission", new Class<?>[]{CommandSource.class}, source));
+    }
+
+    @Test
+    void restartReloadsVhrAfterTheDependencyCheckPasses() throws Exception {
+        PluginContainer vhr = mock(PluginContainer.class);
+        @SuppressWarnings("unchecked")
+        PluginResults<PluginContainer> results = mock(PluginResults.class);
+        VelocityAudience audience = mock(VelocityAudience.class);
+        when(plugin.getPlugin()).thenReturn(vhr);
+        when(pluginManager.reloadPlugins(List.of(vhr))).thenReturn(results);
+
+        invoke(
+                "handleRestart",
+                new Class<?>[]{VelocityAudience.class, boolean.class, String.class},
+                audience,
+                true,
+                "vhr restart --force"
+        );
+
+        verify(pluginManager).reloadPlugins(List.of(vhr));
     }
 
     private Object invoke(String name, Class<?>[] parameterTypes, Object... args) throws Exception {

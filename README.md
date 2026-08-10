@@ -8,6 +8,9 @@
 
 Hot-load, unload, reload, and watch Velocity plugins without restarting your proxy.
 
+Run `./gradlew acceptanceTest` to boot a disposable Velocity instance and validate the command surface, dynamic
+plugin lifecycle, watcher, and VHR self-restart against temporary plugins.
+
 ## Quick Start
 
 1. Place `VelocityHotReloader.jar` in your Velocity `plugins/` directory.
