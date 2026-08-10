@@ -38,6 +38,9 @@ Assign permission nodes based on operator role:
 - `velocityhotreloader.plugins`
 - `velocityhotreloader.plugins.version`
 
+Velocity's Brigadier tree omits `/velocityhotreloader` and `/vhr` for players without any operational VHR
+permission. Players only receive the root and the command nodes they are permitted to use.
+
 ## Operational Safety Notes
 
 - `unloadplugin`, `reloadplugin`, and `watchplugin` enforce dependency safety by default.

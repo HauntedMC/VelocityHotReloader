@@ -1,6 +1,7 @@
 package nl.hauntedmc.velocityhotreloader.commands;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,6 +12,7 @@ import com.mojang.brigadier.suggestion.Suggestion;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.velocitypowered.api.plugin.PluginContainer;
+import com.velocitypowered.api.command.CommandSource;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -133,6 +135,15 @@ class CommandVHRTest {
 
         List<String> suggestions = future.join().getList().stream().map(Suggestion::getText).toList();
         assertEquals(Set.of("two", "three"), Set.copyOf(suggestions));
+    }
+
+    @Test
+    void rootCommandIsHiddenWithoutAnyVhrPermission() throws Exception {
+        CommandSource source = mock(CommandSource.class);
+        assertFalse((boolean) invoke("hasRootPermission", new Class<?>[]{CommandSource.class}, source));
+
+        when(source.hasPermission("velocityhotreloader.reloadplugin")).thenReturn(true);
+        assertTrue((boolean) invoke("hasRootPermission", new Class<?>[]{CommandSource.class}, source));
     }
 
     private Object invoke(String name, Class<?>[] parameterTypes, Object... args) throws Exception {

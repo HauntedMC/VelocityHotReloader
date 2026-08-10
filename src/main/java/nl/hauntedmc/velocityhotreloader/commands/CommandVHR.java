@@ -60,6 +60,19 @@ public class CommandVHR {
     private static final String PERM_PLUGINS = "velocityhotreloader.plugins";
     private static final String PERM_PLUGINS_VERSION = "velocityhotreloader.plugins.version";
 
+    private static final Set<String> ROOT_PERMISSIONS = Set.of(
+            PERM_HELP,
+            PERM_RELOAD,
+            PERM_RESTART,
+            PERM_LOAD_PLUGIN,
+            PERM_UNLOAD_PLUGIN,
+            PERM_RELOAD_PLUGIN,
+            PERM_WATCH_PLUGIN,
+            PERM_PLUGIN_INFO,
+            PERM_COMMAND_INFO,
+            PERM_PLUGINS
+    );
+
     private static final Set<String> FORCE_FLAGS = Set.of("--force", "-f");
     private static final Set<String> VERSION_FLAGS = Set.of("--version", "-v");
 
@@ -82,6 +95,7 @@ public class CommandVHR {
 
     private LiteralCommandNode<CommandSource> buildTree() {
         LiteralArgumentBuilder<CommandSource> root = LiteralArgumentBuilder.<CommandSource>literal(ROOT_COMMAND)
+                .requires(this::hasRootPermission)
                 .executes(context -> {
                     if (hasPermission(context.getSource(), PERM_HELP)) {
                         handleHelpCommand(plugin.getChatProvider().get(context.getSource()));
@@ -253,6 +267,10 @@ public class CommandVHR {
 
     private boolean hasPermission(CommandSource source, String permission) {
         return permission == null || permission.isBlank() || source.hasPermission(permission);
+    }
+
+    private boolean hasRootPermission(CommandSource source) {
+        return ROOT_PERMISSIONS.stream().anyMatch(source::hasPermission);
     }
 
     private void handleHelpCommand(VelocityAudience sender) {
