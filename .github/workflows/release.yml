@@ -48,7 +48,6 @@ jobs:
       PACKAGES_TOKEN: ${{ secrets.HAUNTEDMC_PACKAGES_TOKEN }}
       GH_TOKEN: ${{ github.token }}
       VHR_ACCEPTANCE_KEEP_WORK_DIRECTORY: 'true'
-      VHR_ACCEPTANCE_WORK_DIRECTORY: ${{ runner.temp }}/velocityhotreloader-acceptance
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -70,6 +69,8 @@ jobs:
         name: Inspect published Maven coordinates
         run: gh haunted-release published-state "${{ needs.gate.outputs.version }}"
       - name: Verify release candidate with platform acceptance
+        env:
+          VHR_ACCEPTANCE_WORK_DIRECTORY: ${{ runner.temp }}/velocityhotreloader-acceptance
         run: ./mvnw -U -B -ntp -Prelease,platform-acceptance verify
       - name: Audit distributable jar before publication
         run: bash scripts/verify-artifact.sh
