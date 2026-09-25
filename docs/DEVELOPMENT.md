@@ -5,17 +5,15 @@ This page is for contributors who want a fast, reliable local workflow for Veloc
 ## Local Setup
 
 ```bash
-./gradlew compileJava
+./mvnw -B -ntp -DskipTests compile
 ```
 
 Useful commands during development:
 
 ```bash
-./gradlew test
-./gradlew checkstyleMain checkstyleTest
-./gradlew test jacocoTestReport
-./gradlew acceptanceTest
-./gradlew build
+./mvnw -B -ntp test
+./mvnw -B -ntp verify
+./mvnw -B -ntp -Pplatform-acceptance verify
 ```
 
 ## Recommended Workflow

@@ -2,11 +2,11 @@
 set -euo pipefail
 
 root_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-artifact="${VHR_ARTIFACT:-$root_directory/build/libs/VelocityHotReloader-1.0.0.jar}"
-velocity_api_classpath="${VHR_VELOCITY_API_CLASSPATH:-}"
-velocity_version="4.1.0-SNAPSHOT"
-velocity_build="9"
-velocity_sha256="635ffe27b4fe1b97e61479012121d4e7c61a9eec99e6bd5a1f923053c2a259ce"
+artifact="${VHR_ARTIFACT:-}"
+velocity_api_classpath="$(cat "${VHR_VELOCITY_API_CLASSPATH:?Missing classpath file}")"
+velocity_version="${VHR_RUNTIME_VERSION:?Missing Velocity runtime version}"
+velocity_build="${VHR_RUNTIME_BUILD:?Missing Velocity runtime build}"
+velocity_sha256="${VHR_RUNTIME_SHA256:?Missing Velocity runtime checksum}"
 if [[ -n "${VHR_ACCEPTANCE_WORK_DIRECTORY:-}" ]]; then
     work_directory="$VHR_ACCEPTANCE_WORK_DIRECTORY"
     created_work_directory=false
@@ -84,7 +84,7 @@ curl --fail --silent --show-error --location --output "$work_directory/velocity.
 [[ "$(sha256sum "$work_directory/velocity.jar" | awk '{print $1}')" == "$velocity_sha256" ]] \
     || fail "Velocity runtime checksum mismatch"
 
-javac --release 25 -cp "$velocity_api_classpath" -d "$work_directory/sample/classes" \
+"${JAVA_HOME:?Set JAVA_HOME to JDK 25}/bin/javac" --release 25 -cp "$velocity_api_classpath" -d "$work_directory/sample/classes" \
     "$root_directory/src/acceptance/sample-plugin/AcceptancePlugin.java"
 
 build_sample_plugin() {
@@ -109,7 +109,7 @@ build_sample_plugin "$work_directory/sample/VhrAcceptanceConsumer.jar" "vhr-acce
 
 cp "$artifact" "$work_directory/velocity/plugins/VelocityHotReloader.jar"
 mkfifo "$work_directory/velocity/console.in"
-(cd "$work_directory/velocity" && exec java -Xms256M -Xmx768M -jar "$work_directory/velocity.jar" <console.in >velocity.log 2>&1) &
+(cd "$work_directory/velocity" && exec "${JAVA_HOME:?Set JAVA_HOME to JDK 25}/bin/java" -Xms256M -Xmx768M -jar "$work_directory/velocity.jar" <console.in >velocity.log 2>&1) &
 velocity_pid=$!
 exec {velocity_input_fd}>"$work_directory/velocity/console.in"
 velocity_log="$work_directory/velocity/velocity.log"

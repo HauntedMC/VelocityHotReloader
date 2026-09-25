@@ -36,7 +36,7 @@ import org.slf4j.Logger;
 @Plugin(
         id = "velocityhotreloader",
         name = "VelocityHotReloader",
-        version = "{version}",
+        version = "1.2.6",
         description = "Velocity Plugin Reloader",
         url = "https://www.hauntedmc.nl",
         authors = "remymine"

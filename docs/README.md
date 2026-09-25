@@ -15,12 +15,6 @@ If you contribute code:
 - [Testing](TESTING.md): test strategy and local validation commands.
 - [Contributing Guide](../CONTRIBUTING.md): pull request expectations.
 
-## Release Notes
+## Releases
 
-Releases are tag-driven.
-
-Typical flow:
-
-1. Ensure CI is green on your target branch.
-2. Bump version and create a release tag with `scripts/bump-version.sh patch`.
-3. Push branch + tag and monitor the release workflow.
+From clean `main`, run `./tools/release/update-version patch --pr`. The shared tooling opens a reviewed PR; CI verifies it. After merge, the release workflow publishes the Maven package, confirms that it resolves, then creates the tag and downloadable jar with a checksum. See [release tooling](../tools/release/README.md).

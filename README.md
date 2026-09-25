@@ -1,27 +1,26 @@
 # VelocityHotReloader
 
-[![CI Lint](https://github.com/HauntedMC/VelocityHotReloader/actions/workflows/ci-lint.yml/badge.svg?branch=main)](https://github.com/HauntedMC/VelocityHotReloader/actions/workflows/ci-lint.yml)
-[![CI Tests and Coverage](https://github.com/HauntedMC/VelocityHotReloader/actions/workflows/ci-tests-and-coverage.yml/badge.svg?branch=main)](https://github.com/HauntedMC/VelocityHotReloader/actions/workflows/ci-tests-and-coverage.yml)
+[![CI](https://github.com/HauntedMC/VelocityHotReloader/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/HauntedMC/VelocityHotReloader/actions/workflows/ci.yml)
 [![Latest Release](https://img.shields.io/github/v/release/HauntedMC/VelocityHotReloader?sort=semver)](https://github.com/HauntedMC/VelocityHotReloader/releases/latest)
-[![Java 21](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white)](https://adoptium.net/)
+[![Java 25](https://img.shields.io/badge/Java-25-007396?logo=openjdk&logoColor=white)](https://adoptium.net/)
 [![License](https://img.shields.io/github/license/HauntedMC/VelocityHotReloader)](LICENSE)
 
 Hot-load, unload, reload, and watch Velocity plugins without restarting your proxy.
 
-Run `./gradlew acceptanceTest` to boot a disposable Velocity instance and validate the command surface, dynamic
+Run `./mvnw -B -ntp -Pplatform-acceptance verify` to boot a disposable Velocity instance and validate the command surface, dynamic
 plugin lifecycle, watcher, and VHR self-restart against temporary plugins.
 
 ## Quick Start
 
-1. Place `VelocityHotReloader.jar` in your Velocity `plugins/` directory.
+1. Place `VelocityHotReloader-<version>.jar` in your Velocity `plugins/` directory.
 2. Start the proxy once to initialize plugin files.
 3. Use `/vhr help` (alias for `/velocityhotreloader help`) to verify command registration.
 4. Grant the permission nodes you want operators to use.
 
 ## Requirements
 
-- Java 21
-- Velocity 3.5.x
+- Java 25
+- Velocity 4.2.x
 
 ## Core Commands
 
@@ -38,26 +37,17 @@ plugin lifecycle, watcher, and VHR self-restart against temporary plugins.
 
 ## Build From Source
 
-```bash
-./gradlew clean build
-```
-
-Output jar: `build/libs/VelocityHotReloader-<version>.jar`
-
-## Version Bump Workflow
-
-Use the helper script to bump semver, commit, and tag:
+Use Java 25. HauntedPlatform is resolved from GitHub Packages; set `PACKAGES_USER` and `PACKAGES_TOKEN` (with `read:packages`) for a fresh local Maven cache. The committed `.mvn/settings.xml` reads these variables.
 
 ```bash
-scripts/bump-version.sh patch
-scripts/bump-version.sh minor --push
+./mvnw -B -ntp verify
 ```
 
-Options:
+Output jar: `target/VelocityHotReloader-<version>.jar`
 
-- `major|minor|patch`: required bump type
-- `--push`: push branch + tag after creating them
-- `--remote <name>`: push/check against a remote (default: `origin`)
+## Release workflow
+
+From clean `main`, run `./tools/release/update-version patch --pr` to open a reviewed version PR. CI tests the PR; after merge, GitHub Actions publishes the Maven package, verifies that it resolves, and creates the tag and downloadable release jar with a SHA-256 checksum. See [release tooling](tools/release/README.md).
 
 ## Learn More
 
