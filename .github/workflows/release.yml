@@ -80,7 +80,11 @@ jobs:
       - name: Resolve published Maven coordinates from a fresh repository
         run: gh haunted-release verify-published "${{ needs.gate.outputs.version }}"
       - name: Checksum distributable
-        run: sha256sum "target/VelocityHotReloader-${{ needs.gate.outputs.version }}.jar" > "target/VelocityHotReloader-${{ needs.gate.outputs.version }}.jar.sha256"
+        run: |
+          cd target
+          artifact="VelocityHotReloader-${{ needs.gate.outputs.version }}.jar"
+          sha256sum "$artifact" > "$artifact.sha256"
+          sha256sum --check "$artifact.sha256"
       - name: Create release after package verification
         run: |
           gh release create "${{ needs.gate.outputs.tag }}" --target "$GITHUB_SHA" --title "VelocityHotReloader ${{ needs.gate.outputs.tag }}" --generate-notes \
