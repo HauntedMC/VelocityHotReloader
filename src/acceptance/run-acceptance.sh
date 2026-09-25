@@ -55,7 +55,9 @@ cleanup() {
     if [[ -n "$velocity_pid" ]]; then
         local deadline=$((SECONDS + 30))
         while kill -0 "$velocity_pid" 2>/dev/null && ((SECONDS < deadline)); do sleep 1; done
-        kill -0 "$velocity_pid" 2>/dev/null && kill "$velocity_pid" 2>/dev/null || true
+        if kill -0 "$velocity_pid" 2>/dev/null; then
+            kill "$velocity_pid" 2>/dev/null || true
+        fi
         wait "$velocity_pid" 2>/dev/null || true
     fi
     if [[ -f "$work_directory/velocity/velocity.log" && $exit_code -ne 0 ]]; then
