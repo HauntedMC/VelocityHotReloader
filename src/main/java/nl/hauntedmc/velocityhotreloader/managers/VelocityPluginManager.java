@@ -506,6 +506,9 @@ public class VelocityPluginManager {
             );
             PluginDescription realPlugin = container.getDescription();
             Module module = RJavaPluginLoader.createModule(javaPluginLoader, container);
+            Set<String> pendingPluginIds = containers.stream()
+                    .map(candidate -> candidate.getDescription().getId())
+                    .collect(Collectors.toSet());
 
             AbstractModule commonModule = new AbstractModule() {
                 @Override
@@ -515,6 +518,9 @@ public class VelocityPluginManager {
                     bind(EventManager.class).toInstance(proxy.getEventManager());
                     bind(CommandManager.class).toInstance(proxy.getCommandManager());
                     for (PluginContainer container : proxy.getPluginManager().getPlugins()) {
+                        if (pendingPluginIds.contains(container.getDescription().getId())) {
+                            continue;
+                        }
                         bind(PluginContainer.class)
                                 .annotatedWith(Names.named(container.getDescription().getId()))
                                 .toInstance(container);

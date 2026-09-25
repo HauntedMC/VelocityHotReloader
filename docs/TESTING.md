@@ -15,19 +15,19 @@ Tests are organized under `src/test/java` and generally mirror production packag
 Run tests:
 
 ```bash
-./gradlew test
+./mvnw -B -ntp test
 ```
 
 Run full quality checks:
 
 ```bash
-./gradlew check
+./mvnw -B -ntp verify
 ```
 
 Run the Velocity platform acceptance suite:
 
 ```bash
-./gradlew acceptanceTest
+./mvnw -B -ntp -Pplatform-acceptance verify
 ```
 
 It downloads the pinned Velocity runtime, builds temporary sample plugins, and exercises VHR's commands,
@@ -36,13 +36,13 @@ dependency protection, dynamic reload, file watcher, and self-restart.
 Run lint checks:
 
 ```bash
-./gradlew checkstyleMain checkstyleTest
+./mvnw -B -ntp -DskipTests verify
 ```
 
 Generate local coverage report:
 
 ```bash
-./gradlew test jacocoTestReport
+./mvnw -B -ntp verify
 ```
 
 ## What to Test
@@ -66,10 +66,10 @@ Use these rules when adding or reviewing tests:
 
 ## Coverage Reports
 
-After `jacocoTestReport`:
+After `./mvnw -B -ntp verify`:
 
-- HTML report: `build/reports/jacoco/test/html/index.html`
-- XML report: `build/reports/jacoco/test/jacocoTestReport.xml`
+- HTML report: `target/site/jacoco/index.html`
+- XML report: `target/site/jacoco/jacoco.xml`
 
 ## CI
 

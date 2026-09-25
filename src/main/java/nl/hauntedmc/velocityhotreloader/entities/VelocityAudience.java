@@ -2,7 +2,6 @@ package nl.hauntedmc.velocityhotreloader.entities;
 
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.proxy.Player;
-import nl.hauntedmc.velocityhotreloader.entities.VHRAudience;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 

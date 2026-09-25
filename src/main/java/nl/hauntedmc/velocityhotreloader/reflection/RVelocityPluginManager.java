@@ -5,6 +5,7 @@ import com.velocitypowered.api.plugin.PluginManager;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Set;
 
 public class RVelocityPluginManager {
 
@@ -18,6 +19,7 @@ public class RVelocityPluginManager {
             VELOCITY_PLUGIN_MANAGER_CLASS,
             "pluginInstances"
     );
+    private static final Field PLUGINS_FIELD = findPluginsField();
     private static final Method REGISTER_PLUGIN_METHOD = Reflect.getAccessibleMethod(
             VELOCITY_PLUGIN_MANAGER_CLASS,
             "registerPlugin",
@@ -26,6 +28,14 @@ public class RVelocityPluginManager {
 
     private RVelocityPluginManager() {}
 
+    private static Field findPluginsField() {
+        try {
+            return Reflect.getAccessibleField(VELOCITY_PLUGIN_MANAGER_CLASS, "plugins");
+        } catch (IllegalStateException missingInEarlierVelocity) {
+            return null;
+        }
+    }
+
     public static void registerPlugin(PluginManager manager, PluginContainer container) {
         Reflect.invoke(REGISTER_PLUGIN_METHOD, manager, container);
     }
@@ -33,8 +43,8 @@ public class RVelocityPluginManager {
     /**
      * Removes a plugin from every registry maintained by Velocity's plugin manager.
      *
-     * <p>Velocity 4.1 derives its public plugin collection from these maps. Removing an unloaded
-     * container from both registries keeps it out of subsequent plugin injections.</p>
+     * <p>Velocity 4.2 also keeps a separate collection backing getPlugins(). All three
+     * registries must drop the container to prevent stale dependency checks after a reload.</p>
      */
     public static void unregisterPlugin(PluginManager manager, PluginContainer container) {
         Map<String, PluginContainer> pluginsById = Reflect.getFieldValue(PLUGINS_BY_ID_FIELD, manager);
@@ -42,5 +52,10 @@ public class RVelocityPluginManager {
 
         Map<Object, PluginContainer> pluginInstances = Reflect.getFieldValue(PLUGIN_INSTANCES_FIELD, manager);
         pluginInstances.entrySet().removeIf(entry -> entry.getValue() == container);
+
+        if (PLUGINS_FIELD != null) {
+            Set<PluginContainer> plugins = Reflect.getFieldValue(PLUGINS_FIELD, manager);
+            plugins.remove(container);
+        }
     }
 }

@@ -4,7 +4,7 @@ Thanks for taking the time to contribute.
 
 ## Before You Start
 
-- Use Java 21 and Gradle.
+- Use Java 25 and Maven.
 - Make sure you can run a local compile and test pass.
 - If your change affects runtime behavior, test it in a Velocity environment.
 
@@ -13,7 +13,7 @@ Thanks for taking the time to contribute.
 ```bash
 git clone <repo-url>
 cd VelocityHotReloader
-./gradlew compileJava
+./mvnw -B -ntp -DskipTests compile
 ```
 
 ## Contribution Workflow
@@ -29,15 +29,15 @@ cd VelocityHotReloader
 Minimum checks:
 
 ```bash
-./gradlew compileJava
-./gradlew test
+./mvnw -B -ntp -DskipTests compile
+./mvnw -B -ntp test
 ```
 
 Recommended before merge:
 
 ```bash
-./gradlew checkstyleMain checkstyleTest
-./gradlew check
+./mvnw -B -ntp verify
+./mvnw -B -ntp -Pplatform-acceptance verify
 ```
 
 ## Pull Request Expectations
